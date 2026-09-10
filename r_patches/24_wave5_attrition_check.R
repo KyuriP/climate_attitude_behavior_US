@@ -13,8 +13,7 @@
 # built here.
 #
 # Demographic variable names were confirmed directly against this dataset's
-# OWN codebook (data_henry/codebook.parquet) and the raw data
-# (data_henry/w1w2w3w4w5_indices_weights_jul12_2022.parquet) rather than
+# OWN codebook and the raw participant-level data files rather than
 # assumed -- the "Core Wave 1_Codebook.pdf" attached to the project turned out
 # to describe a different (European multi-country) survey and does NOT apply
 # to this dataset; do not use it for this dataset's variable names. Confirmed

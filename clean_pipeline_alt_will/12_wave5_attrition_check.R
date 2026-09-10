@@ -3,7 +3,7 @@
 # sample against the 1,117 who have waves 1-4 but no wave-5 behavior, on the
 # 8 nodes + demographics, using SMD instead of p-values.
 #
-# demographic var names checked against data_henry's own codebook/raw data --
+# demographic var names checked against the raw survey codebook/raw data --
 # the Core Wave 1 codebook pdf is a different (european) survey, doesn't
 # apply here, don't use it for these variable names.
 

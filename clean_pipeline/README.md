@@ -8,13 +8,9 @@ doesn't need to be a clean script, it's a one-time decision trail.
 
 ## raw data not included
 
-`01_data_prep.R` reads the raw participant-level survey files from
-`data_henry/` (`w1w2w3w4w5_indices_weights_jul12_2022.parquet`,
-`codebook.parquet`, `participant.parquet`). That folder is gitignored and
-not part of this repo, since it's individual-level survey data with
-demographic fields, not something to publish alongside the code. Running
-the pipeline from scratch requires getting those files separately; get in
-touch for access to the raw data.
+The raw participant-level survey data is not included in this repository.
+
+Get in touch for access to the raw data if you want to reproduce the pipeline end to end.
 
 ## run order
 

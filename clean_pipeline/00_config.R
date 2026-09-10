@@ -34,6 +34,9 @@ ABBR_EXT <- c(ABBR, climate_behavior = "CB")
 EXISTENCE_MIN <- 0.60
 ORIENTATION_ASYMMETRY_EPS <- 0.01
 
+# ---- input data ----
+RAW_DATA_DIR <- "data_henry"
+
 # ---- paths ----
 OUTPUT_DIR <- "pipeline_outputs"
 MANIFEST_PATH <- file.path(OUTPUT_DIR, "bootstrap_manifest.csv")

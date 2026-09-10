@@ -31,9 +31,8 @@ avoids committing to one directed completion at all).
 
 ## Data
 
-The raw participant-level survey data is not included in this repository. `clean_pipeline/01_data_prep.R`
-expects it in a `data_henry/` folder (parquet files); that folder is gitignored since it's
-individual-level survey data with demographic fields, not something to publish alongside the code.
+The raw participant-level survey data is not included in this repository.
+
 Get in touch for access to the raw data if you want to reproduce the pipeline end to end.
 
 ## Reproducing the analysis

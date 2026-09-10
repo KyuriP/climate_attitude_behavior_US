@@ -8,7 +8,7 @@
 # df_main_allwave/df_extended_allwave (those are just for the sensitivity
 # check against the all-wave version).
 #
-# needs data_henry/*.parquet in the working dir.
+# needs the raw parquet files in RAW_DATA_DIR (set in 00_config.R).
 
 
 suppressPackageStartupMessages({
@@ -28,9 +28,9 @@ alpha    <- psych::alpha
 # ---------------------------------------------------------------------------
 # load-data
 # ---------------------------------------------------------------------------
-codebook    <- read_parquet("data_henry/codebook.parquet")
-participant <- read_parquet("data_henry/participant.parquet")
-rawdat      <- read_parquet("data_henry/w1w2w3w4w5_indices_weights_jul12_2022.parquet")
+codebook    <- read_parquet(file.path(RAW_DATA_DIR, "codebook.parquet"))
+participant <- read_parquet(file.path(RAW_DATA_DIR, "participant.parquet"))
+rawdat      <- read_parquet(file.path(RAW_DATA_DIR, "w1w2w3w4w5_indices_weights_jul12_2022.parquet"))
 
 df_long <- rawdat |>
   dplyr::filter(PID %in% participant$participant_id,

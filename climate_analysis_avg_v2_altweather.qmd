@@ -86,10 +86,11 @@ alpha    <- psych::alpha
 ```
 
 ```{r load-data}
-codebook <- read_parquet("data_henry/codebook.parquet")
-participant <- read_parquet("data_henry/participant.parquet")
+raw_data_dir <- "data_henry"
+codebook <- read_parquet(file.path(raw_data_dir, "codebook.parquet"))
+participant <- read_parquet(file.path(raw_data_dir, "participant.parquet"))
 rawdat      <- read_parquet(
-  "data_henry/w1w2w3w4w5_indices_weights_jul12_2022.parquet")
+  file.path(raw_data_dir, "w1w2w3w4w5_indices_weights_jul12_2022.parquet"))
 
 df_long <- rawdat |>
   dplyr::filter(PID %in% participant$participant_id,

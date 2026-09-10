@@ -21,6 +21,9 @@ NODE_ORDER_EXT <- c(NODE_ORDER_MAIN, "climate_behavior")
 EXISTENCE_MIN <- 0.60
 ORIENTATION_ASYMMETRY_EPS <- 0.01
 
+# ---- input data ----
+RAW_DATA_DIR <- "data_henry"
+
 # ---- paths ----
 OUTPUT_DIR <- "pipeline_outputs_alt_will"  # keeps this fully separate from the real pipeline_outputs
 MANIFEST_PATH <- file.path(OUTPUT_DIR, "bootstrap_manifest.csv")
