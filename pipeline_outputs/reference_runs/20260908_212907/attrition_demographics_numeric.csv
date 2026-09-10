@@ -1,0 +1,4 @@
+"variable","mean_retained","mean_attrited","smd","flag_ge_.10"
+"age",55.363,50.914,0.29,TRUE
+"educ",3.654,3.493,0.1,TRUE
+"income",3.491,3.199,0.19,TRUE

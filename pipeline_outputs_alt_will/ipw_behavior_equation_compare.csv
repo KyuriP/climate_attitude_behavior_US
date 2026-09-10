@@ -1,0 +1,7 @@
+"predictor","beta","se","p","model"
+"harm_present",0.351,0.03,0,"unweighted"
+"weather_risk_prep",0.183,0.034,0,"unweighted"
+"social_norms",0.096,0.031,0.0023,"unweighted"
+"harm_present",0.353,0.031,0,"ipw_weighted"
+"weather_risk_prep",0.185,0.037,0,"ipw_weighted"
+"social_norms",0.105,0.033,0.0012,"ipw_weighted"

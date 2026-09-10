@@ -1,0 +1,11 @@
+"target","point_estimate","boot_mean","ci_lower_95","ci_upper_95","n_boot"
+"belief_concern",0.2022,0.2022,0.1801,0.2243,1000
+"harm_present",0.2157,0.2158,0.1871,0.2428,1000
+"harm_future",0.1399,0.1399,0.1189,0.1626,1000
+"weather_risk_prep",0.0921,0.0918,0.059,0.1251,1000
+"social_norms",0.0481,0.048,0.019,0.0797,1000
+"trust_science",0.0115,0.0114,0.004,0.0207,1000
+"policy_support",0.0077,0.0079,0.0013,0.0175,1000
+"politics",0.108,0.108,0.0917,0.1235,1000
+"harm_present+weather_risk_prep",0.2686,0.2684,0.2344,0.3011,1000
+"harm_present+weather_risk_prep+social_norms",0.3167,0.3164,0.2799,0.3516,1000

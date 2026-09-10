@@ -1,0 +1,3769 @@
+---
+title: "Climate Attitude Belief Network"
+subtitle: "Stable between-person structure of climate beliefs, harm perceptions, policy support, social norms, and behavior"
+author: "Kyuri"
+date: today
+format:
+  html:
+    page-layout: full
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: true
+    code-summary: "Show code"
+    theme: flatly
+    self-contained: true
+    callout-appearance: minimal
+    embed-resources: true
+engine: knitr
+editor: visual
+---
+
+```{=html}
+<!--
+ALT-SPEC SENSITIVITY ANALYSIS -- weather_risk_prep redefined.
+
+This is a copy of climate_analysis_avg_v2.qmd with exactly one substantive
+change: weather_risk_prep is built from ew5 alone (worry about personal
+exposure to an extreme weather event) instead of mean(ew5, ew6). ew6
+(preparedness behavior) is dropped from this node -- prompted by review
+feedback questioning why a worry item and a behavior item were combined
+into one node.
+
+The variable name `weather_risk_prep` is kept identical everywhere else in
+this document (main_nodes, node_order_cd, the GGM, FCI/PC bootstrap, the
+lavaan SCM, intervention simulation) so no other code needed to change --
+only its content differs from the original. Its plot label is relabeled
+"Weather Risk (worry)" so output is easy to tell apart from the original
+run at a glance.
+
+Compare against the original climate_analysis_avg_v2.qmd run to see how
+every downstream result involving this node changes: GGM edge weights
+(Section 6.3/6.5 edge tables), FCI/PC bootstrap adjacency+orientation
+(fci_props_combined / pc_props_combined for this node's row/column),
+lavaan SCM path coefficients and fit (std_tr, sem_fit_tr), and the
+intervention-simulation effect for this node.
+-->
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 10,
+  fig.height = 6
+)
+```
+
+# 1. Setup and data loading
+
+```{r libraries}
+suppressPackageStartupMessages({
+  library(arrow)
+  library(skimr)
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(pheatmap)
+  library(factoextra)
+  library(scales)
+  library(psych)
+  library(corpcor)
+  library(infotheo)
+  library(ggrepel)
+  library(moments)
+  library(knitr)
+  library(gridExtra)
+})
+
+select   <- dplyr::select
+filter   <- dplyr::filter
+mutate   <- dplyr::mutate
+arrange  <- dplyr::arrange
+describe <- psych::describe
+alpha    <- psych::alpha
+```
+
+```{r load-data}
+codebook <- read_parquet("data_henry/codebook.parquet")
+participant <- read_parquet("data_henry/participant.parquet")
+rawdat      <- read_parquet(
+  "data_henry/w1w2w3w4w5_indices_weights_jul12_2022.parquet")
+
+df_long <- rawdat |>
+  dplyr::filter(PID %in% participant$participant_id,
+                WAVE %in% c("1","2","3","4","5")) |>
+  dplyr::rename(participant_id = PID) |>
+  dplyr::mutate(wave = as.integer(as.character(WAVE)))
+
+df_w5 <- df_long |> dplyr::filter(wave == 5)
+
+candidate_items_raw <- c(
+  # core repeated attitude candidates
+  "cc1", "cc3", "cc6",
+  "cc4_world", "cc4_wealthUS", "cc4_poorUS", "cc4_comm",
+  "cc5_world", "cc5_wealthUS", "cc5_poorUS", "cc5_comm",
+  "cc_pol_tax", "cc_pol_car",
+  "cvcc9_cc",
+  "cvcc4_should", "cvcc4_will", "cvcc4_personal",
+  "cvcc_worryothers",
+  "pol_ideology", "ew5", "ew6",
+
+  # additional candidates now carried into EDA screening
+  "cc2", "cvcc6", "pol7", "pol7_pi",
+  "cc10", "cc11", "cc12",
+
+  # only variables dropped upfront for sparsity
+  "ew3_phy", "ew3_mat", "ew3_men", "ew3_fin"
+)
+
+# all variables that will actually enter the EDA screening stage
+screen_items_raw <- c(
+  "cc1", "cc2", "cc3", "cc6",
+  "cc4_world", "cc4_wealthUS", "cc4_poorUS", "cc4_comm",
+  "cc5_world", "cc5_wealthUS", "cc5_poorUS", "cc5_comm",
+  "cc_pol_tax", "cc_pol_car",
+  "cvcc9_cc", "cvcc6",
+  "cvcc4_should", "cvcc4_will", "cvcc4_personal",
+  "cvcc_worryothers",
+  "pol_ideology", "pol7", "pol7_pi",
+  "ew5", "ew6",
+  "cc10", "cc11", "cc12"
+)
+
+beh_items <- c(
+  "cc_behavior_meat", "cc_behavior_travel", "cc_behavior_activ",
+  "cc_behavior_discuss", "cc_behavior_evacuate", "cc_behavior_move"
+)
+
+cat("Rows:", nrow(df_long),
+    "| Participants:", n_distinct(df_long$participant_id),
+    "| Waves:", paste(sort(unique(df_long$wave)), collapse = ","), "\n")
+cat("Wave 5 N:", nrow(df_w5), "\n")
+```
+
+::: callout-note
+## Design framing
+
+The goal of this analysis is to characterize a **stable between-person climate-attitude system**, not wave-specific fluctuations. Repeated attitude items are therefore harmonized to a common 0–1 scale and later averaged across all available waves for each participant. The resulting participant-level scores are interpreted as typical positions in the climate-attitude field over the study period.
+
+Wave-5 behavioral items are treated separately as downstream outcomes and are not averaged together with the repeated attitude variables.
+:::
+
+## 1.1 Raw data summary
+
+This section shows the broader item pool considered for the repeated-attitude analysis.
+
+```{r item-status}
+item_status <- tibble::tribble(
+  ~item,              ~status,             ~reason,
+
+  # variables included in the repeated-attitude EDA screening set
+  "cc1",              "screened",          "belief item",
+  "cc2",              "screened",          "attribution item recoded to an ordered climate-acceptance / human-attribution gradient for screening",
+  "cc3",              "screened",          "problem-severity candidate with narrower temporal coverage",
+  "cc6",              "screened",          "concern / worry item",
+  "cc4_world",        "screened",          "present-harm item",
+  "cc4_wealthUS",     "screened",          "present-harm item",
+  "cc4_poorUS",       "screened",          "present-harm item",
+  "cc4_comm",         "screened",          "present-harm item",
+  "cc5_world",        "screened",          "future-harm item",
+  "cc5_wealthUS",     "screened",          "future-harm item",
+  "cc5_poorUS",       "screened",          "future-harm item",
+  "cc5_comm",         "screened",          "future-harm item",
+  "cc_pol_tax",       "screened",          "policy-support item",
+  "cc_pol_car",       "screened",          "policy-support item",
+  "cvcc9_cc",         "screened",          "response-orientation item",
+  "cvcc6",            "screened",          "individual-action candidate; wording/availability vary across waves",
+  "cvcc4_should",     "screened",          "injunctive-norm candidate",
+  "cvcc4_will",       "screened",          "descriptive-norm candidate",
+  "cvcc4_personal",   "screened",          "personal-intention candidate",
+  "cvcc_worryothers", "screened",          "perceived public concern candidate; wording varies across waves",
+  "pol_ideology",     "screened",          "political self-placement item",
+  "pol7",             "screened",          "political tradeoff candidate",
+  "pol7_pi",          "screened",          "perceived-public political tradeoff candidate; limited temporal coverage",
+  "ew5",              "screened",          "weather-risk item",
+  "ew6",              "screened",          "weather-preparedness item",
+  "cc10",             "screened",          "risk-perception candidate from a separate psychometric risk block",
+  "cc11",             "screened",          "risk-perception candidate from a separate psychometric risk block",
+  "cc12",             "screened",          "risk-perception candidate from a separate psychometric risk block",
+
+  # variables excluded upfront on coverage grounds
+  "ew3_phy",          "dropped upfront",   "coverage too sparse for repeated-attitude screening",
+  "ew3_mat",          "dropped upfront",   "coverage too sparse for repeated-attitude screening",
+  "ew3_men",          "dropped upfront",   "coverage too sparse for repeated-attitude screening",
+  "ew3_fin",          "dropped upfront",   "coverage too sparse for repeated-attitude screening"
+)
+```
+
+```{r availability-summary}
+na_special <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  dplyr::case_when(
+    x %in% c(98, 99, -98, -99) ~ NA_real_,
+    TRUE ~ x
+  )
+}
+
+df_long_cov <- df_long |>
+  dplyr::mutate(
+    across(any_of(c(candidate_items_raw, beh_items)), na_special)
+  )
+
+availability_by_wave_all <- df_long_cov |>
+  dplyr::group_by(wave) |>
+  dplyr::summarise(
+    across(any_of(c(candidate_items_raw, beh_items)), ~ mean(!is.na(.x))),
+    .groups = "drop"
+  ) |>
+  tidyr::pivot_longer(
+    -wave,
+    names_to  = "item",
+    values_to = "prop_observed"
+  ) |>
+  dplyr::left_join(item_status, by = "item")
+
+availability_summary <- availability_by_wave_all |>
+  dplyr::group_by(item, status, reason) |>
+  dplyr::summarise(
+    waves_available = sum(prop_observed > 0.05),
+    first_wave_obs  = ifelse(any(prop_observed > 0.05),
+                             min(wave[prop_observed > 0.05]), NA),
+    last_wave_obs   = ifelse(any(prop_observed > 0.05),
+                             max(wave[prop_observed > 0.05]), NA),
+    waves_label     = ifelse(is.na(first_wave_obs), NA,
+                             paste0(first_wave_obs, "–", last_wave_obs)),
+    min_coverage    = round(min(prop_observed[prop_observed > 0]), 2),
+    max_coverage    = round(max(prop_observed), 2),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(
+    factor(status, levels = c("screened", "dropped upfront")),
+    desc(waves_available),
+    item
+  )
+
+# skim variables
+skimr::skim(df_long_cov |> dplyr::select(any_of(c(candidate_items_raw, beh_items))))
+```
+
+## 1.2 Wave coverage
+
+```{r availability-plot, fig.height=10, fig.width=8}
+item_order <- availability_summary |>
+  dplyr::arrange(desc(waves_available), desc(max_coverage), item) |>
+  dplyr::pull(item)
+
+availability_by_wave_all |>
+  dplyr::mutate(
+    item = factor(item, levels = rev(item_order))
+  ) |>
+  ggplot(aes(x = factor(wave), y = item, fill = prop_observed)) +
+  geom_tile(color = "white", linewidth = 0.3) +
+  geom_text(
+    aes(label = ifelse(prop_observed > 0, scales::percent(prop_observed, accuracy = 1), "")),
+    size = 2.8
+  ) +
+  scale_fill_gradient(
+    low = "grey95",
+    high = "#2166ac",
+    limits = c(0, 1),
+    labels = scales::percent_format(accuracy = 1),
+    name = "Observed"
+  ) +
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Item coverage across waves",
+    subtitle = "Cell values show proportion observed in each wave",
+    x = "Wave",
+    y = NULL
+  ) +
+  theme(
+    panel.grid = element_blank(),
+    axis.text.y = element_text(size = 10)
+  )
+```
+
+::: callout-note
+The coverage plot shows how widely each candidate item was fielded across waves and how complete it was when fielded.
+
+At this stage, the plot is used only to document temporal coverage and to justify a very limited upfront exclusion step. On coverage grounds alone, only the `ew3_*` items are removed before the main EDA because they are too sparse to be useful in repeated-attitude screening. All remaining repeated-attitude variables are carried into Section 3 and evaluated there.
+:::
+
+------------------------------------------------------------------------
+
+# 1.3 Data cleaning and rescaling
+
+```{r cleaning-helpers}
+rescale01 <- function(x, from) {
+  (x - from[1]) / (from[2] - from[1])
+}
+
+# Recode 98, 99, -98, -99 to NA; coerce to numeric
+na_special <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  dplyr::case_when(
+    x %in% c(98, 99, -98, -99) ~ NA_real_,
+    TRUE ~ x
+  )
+}
+
+# Recode binary 1/2 items to 0/1
+recode_binary01 <- function(x) {
+  x <- na_special(x)
+  dplyr::case_when(
+    x == 1 ~ 0,
+    x == 2 ~ 1,
+    TRUE   ~ NA_real_
+  )
+}
+
+# cc1: handles 0/1/2 (No/DK/Yes) and 0/1/99 (No/Yes/DK) coding
+recode_cc1_midpoint <- function(x) {
+  x  <- suppressWarnings(as.numeric(x))
+  ux <- sort(unique(x[!is.na(x)]))
+
+  if (all(ux %in% c(0, 1, 2))) {
+    dplyr::case_when(
+      x == 0 ~ 0,
+      x == 1 ~ 0.5,
+      x == 2 ~ 1,
+      TRUE   ~ NA_real_
+    )
+  } else if (all(ux %in% c(0, 1, 99))) {
+    dplyr::case_when(
+      x == 0  ~ 0,
+      x == 1  ~ 1,
+      x == 99 ~ 0.5,
+      TRUE    ~ NA_real_
+    )
+  } else {
+    dplyr::case_when(
+      x == 0  ~ 0,
+      x == 1  ~ 0.5,
+      x == 2  ~ 1,
+      x == 99 ~ 0.5,
+      TRUE    ~ NA_real_
+    )
+  }
+}
+
+recode_cc1_dropdk <- function(x) {
+  x  <- suppressWarnings(as.numeric(x))
+  ux <- sort(unique(x[!is.na(x)]))
+
+  if (all(ux %in% c(0, 1, 2))) {
+    dplyr::case_when(
+      x == 0 ~ 0,
+      x == 2 ~ 1,
+      TRUE   ~ NA_real_
+    )
+  } else {
+    dplyr::case_when(
+      x == 0 ~ 0,
+      x == 1 ~ 1,
+      TRUE   ~ NA_real_
+    )
+  }
+}
+
+# cc2 recode:
+# 4 = climate change isn't happening -> 0
+# 2 = natural causes               -> 1
+# 3 = both equally                 -> 2
+# 1 = human activities             -> 3
+# then rescale to 0–1
+recode_cc2_ord <- function(x) {
+  x <- na_special(x)
+  out <- dplyr::case_when(
+    x == 4 ~ 0,
+    x == 2 ~ 1,
+    x == 3 ~ 2,
+    x == 1 ~ 3,
+    TRUE   ~ NA_real_
+  )
+  rescale01(out, from = c(0, 3))
+}
+
+mean_or_na <- function(x) {
+  if (all(is.na(x))) NA_real_ else mean(x, na.rm = TRUE)
+}
+```
+
+```{r clean-long-data}
+df_long_h <- df_long |>
+  dplyr::mutate(
+    cc1_raw = suppressWarnings(as.numeric(cc1)),
+    cc1     = recode_cc1_midpoint(cc1),
+
+    # core repeated items on a common 0–1 scale
+    cc3     = rescale01(na_special(cc3), from = c(1, 4)),
+    cc6     = rescale01(na_special(cc6), from = c(1, 4)),
+
+    cc4_world    = rescale01(na_special(cc4_world),    from = c(1, 4)),
+    cc4_wealthUS = rescale01(na_special(cc4_wealthUS), from = c(1, 4)),
+    cc4_poorUS   = rescale01(na_special(cc4_poorUS),   from = c(1, 4)),
+    cc4_comm     = rescale01(na_special(cc4_comm),     from = c(1, 4)),
+
+    cc5_world    = rescale01(na_special(cc5_world),    from = c(1, 4)),
+    cc5_wealthUS = rescale01(na_special(cc5_wealthUS), from = c(1, 4)),
+    cc5_poorUS   = rescale01(na_special(cc5_poorUS),   from = c(1, 4)),
+    cc5_comm     = rescale01(na_special(cc5_comm),     from = c(1, 4)),
+
+    cc_pol_tax   = rescale01(na_special(cc_pol_tax), from = c(1, 5)),
+    cc_pol_car   = rescale01(na_special(cc_pol_car), from = c(1, 5)),
+
+    cvcc9_cc       = rescale01(na_special(cvcc9_cc), from = c(1, 5)),
+    cvcc4_should   = rescale01(na_special(cvcc4_should), from = c(1, 5)),
+    cvcc4_will     = rescale01(na_special(cvcc4_will), from = c(1, 5)),
+    cvcc4_personal = rescale01(na_special(cvcc4_personal), from = c(1, 5)),
+    cvcc_worryothers = rescale01(na_special(cvcc_worryothers), from = c(1, 4)),
+
+    pol_ideology = rescale01(na_special(pol_ideology), from = c(1, 5)),
+    ew5          = rescale01(na_special(ew5), from = c(1, 4)),
+    ew6          = rescale01(na_special(ew6), from = c(1, 4)),
+
+    # screening-only variables cleaned into analytically usable form
+    cc2     = recode_cc2_ord(cc2),
+    cvcc6   = rescale01(na_special(cvcc6), from = c(1, 5)),
+    pol7    = recode_binary01(pol7),
+    pol7_pi = recode_binary01(pol7_pi),
+    cc10    = rescale01(na_special(cc10), from = c(1, 7)),
+    cc11    = rescale01(na_special(cc11), from = c(1, 7)),
+    cc12    = rescale01(na_special(cc12), from = c(1, 7))
+  )
+```
+
+```{r clean-wave5-behavior}
+df_w5_h <- df_w5 |>
+  dplyr::mutate(across(any_of(beh_items),
+                        ~rescale01(na_special(.x), from = c(1, 5))))
+```
+
+::: callout-note
+All repeated-attitude variables entering the EDA are cleaned into analytically usable form before person-level averaging. Wherever possible, ordinal items are put on a common 0–1 scale so that participant-level averages are comparable across variables. Special missing-value codes are recoded to `NA`, and `cc1` is handled separately because its coding differs across waves and includes a “don’t know” category.
+
+The variables that enter Section 3 are not yet being treated as final network nodes. This cleaning step is only meant to put them into a consistent form for empirical screening.
+
+`cc2` is treated as a special case. The original item distinguishes “human activities,” “natural causes,” “both equally,” and “climate change isn’t happening.” For screening purposes, it is analytically recoded to an ordered 0–1 scale running from climate-change non-endorsement through natural and mixed attribution to explicit human-cause attribution (`not happening = 0`, `natural = 1`, `both = 2`, `human = 3`, then rescaled to 0–1). This recoding is used only for provisional inclusion in the empirical screening stage.
+:::
+
+------------------------------------------------------------------------
+
+# 2. Variable dictionary
+
+This dictionary documents the repeated-attitude variables that enter the EDA screening stage, together with the wave-5 behavior items that are used later as downstream outcomes. At this point, the table is descriptive only: it records item content and response format, but does not yet determine which variables will survive into the final composite set.
+
+## Repeated-attitude variables entering EDA screening
+
+| item | domain | question description | response format | note |
+|---------------|---------------|---------------|---------------|---------------|
+| `cc1` | Belief | “Do you think global warming / climate change is happening?” | Yes / No / Don’t know | `cc1` is recoded separately because the “don’t know” category differs across waves |
+| `cc2` | Attribution | “Do you think rising temperatures are a result of human activities, natural causes, both, or not happening?” | 4-category single response: Human activities / Natural causes / Both / Not happening | For screening, this is analytically recoded to an ordered 0–1 gradient from non-endorsement through natural and mixed attribution to explicit human attribution |
+| `cc3` | Problem severity | “Would you say global warming / climate change is…” | 4-category single response: Not a problem / A minor problem / A serious problem but not a crisis / A significant crisis | Severity candidate with narrower temporal coverage |
+| `cc6` | Concern / worry | “How worried are you about current and future global warming / climate change?” | 1 = not at all worried to 4 = very worried | Repeated concern item |
+| `cc4_world` | Present harm | “How much, if at all, do you think global warming / climate change is currently harming the world in general?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc4_wealthUS` | Present harm | “How much, if at all, do you think global warming / climate change is currently harming wealthy communities within the United States?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc4_poorUS` | Present harm | “How much, if at all, do you think global warming / climate change is currently harming poor communities within the United States?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc4_comm` | Present harm | “How much, if at all, do you think global warming / climate change is currently harming your local community?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc5_world` | Future harm | “How much, if at all, do you think global warming / climate change will harm future generations of people in the world in general?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc5_wealthUS` | Future harm | “How much, if at all, do you think global warming / climate change will harm future generations of people in wealthy communities within the United States?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc5_poorUS` | Future harm | “How much, if at all, do you think global warming / climate change will harm future generations of people in poor communities within the United States?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc5_comm` | Future harm | “How much, if at all, do you think global warming / climate change will harm future generations of people in your local community?” | 1 = not at all to 4 = a great deal | Wave 1 includes `99 = don’t know` |
+| `cc_pol_tax` | Policy support | “How much do you support or oppose… a tax or fee on the production or distribution of carbon-based fuels?” | 1 = strongly oppose to 5 = strongly support | Direct climate-policy item |
+| `cc_pol_car` | Policy support | “How much do you support or oppose… stronger carbon emissions standards for car manufacturers?” | 1 = strongly oppose to 5 = strongly support | Direct climate-policy item |
+| `cvcc9_cc` | Response orientation | “Scientists with the appropriate expertise should guide climate response.” | 1 = strongly disagree to 5 = strongly agree | Expert-guidance / response-orientation item |
+| `cvcc6` | Individual action | “Global warming / climate change requires each of us to act in order to help solve a serious social and environmental problem.” | 1 = strongly disagree to 5 = strongly agree | Wording shifts somewhat across waves; included for EDA screening |
+| `cvcc4_should` | Social norms | “People should permanently shift some lower-carbon behaviors following COVID.” | 1 = strongly disagree to 5 = strongly agree | Injunctive-norm candidate |
+| `cvcc4_will` | Norms | “People / most people will permanently shift some lower-carbon behaviors following COVID.” | 1 = strongly disagree to 5 = strongly agree | Descriptive-norm candidate; codebook notes a wave-3 fix |
+| `cvcc4_personal` | Personal intention | “I will permanently shift some lower-carbon behaviors following COVID.” | 1 = strongly disagree to 5 = strongly agree | Personal-intention candidate |
+| `cvcc_worryothers` | Perceived public worry | “How worried do you think most Americans are about global warming / climate change these days?” | 1 = not at all worried to 4 = very worried | Earlier waves use somewhat different public-worry wording; included for screening |
+| `pol_ideology` | Politics | “What is your political ideology?” | 1 = very conservative to 5 = very liberal | Political self-placement |
+| `pol7` | Politics / policy tradeoff | “Which statement comes closer to your views… stricter environmental laws hurt the economy, or stricter environmental laws are worth the cost?” | Binary single response | Political tradeoff candidate |
+| `pol7_pi` | Perceived public politics | “Which statement do you think comes closer to the views of most Americans… stricter environmental laws hurt the economy, or are worth the cost?” | Binary single response | Perceived-public tradeoff candidate |
+| `ew5` | Weather risk | “How worried are you about an extreme weather event or natural disaster happening to you personally in the next year?” | 1 = not at all to 4 = a great deal | Weather-risk item |
+| `ew6` | Weather preparedness | “How much have you prepared for a future extreme weather event or natural disaster?” | 1 = not at all to 4 = a great deal | Weather-preparedness item |
+| `cc10` | Risk perception | “To what extent are the risks of global warming / climate change known precisely by the people who are exposed to those risks?” | 1 = known precisely to 7 = unknown | Psychometric risk-perception candidate |
+| `cc11` | Risk perception | “If you are exposed to the risks of global warming / climate change, to what extent can you, through your own actions, control whether you are harmed?” | 1 = personal risk can be controlled to 7 = personal risk can’t be controlled | Psychometric risk-perception candidate |
+| `cc12` | Risk perception | “Is the risk of global warming / climate change a risk that people have learned to live with and can think about reasonably calmly, or is it a risk that people dread?” | 1 = calm to 7 = dread | Psychometric risk-perception candidate |
+
+## Wave-5 downstream behavior items
+
+| item | domain | question description | response format | note |
+|---------------|---------------|---------------|---------------|---------------|
+| `cc_behavior_meat` | Behavior | “To what extent, if any, do you avoid high-emissions food products such as meat and dairy in order to help address climate change?” | 1 = not at all to 5 = a lot | Downstream mitigation-behavior item |
+| `cc_behavior_travel` | Behavior | “To what extent, if any, do you seek lower-emissions travel alternatives in order to help address climate change?” | 1 = not at all to 5 = a lot | Downstream mitigation-behavior item |
+| `cc_behavior_activ` | Behavior | “To what extent, if any, do you engage in political campaigning or activism to address climate change?” | 1 = not at all to 5 = a lot | Downstream public-engagement behavior |
+| `cc_behavior_discuss` | Behavior | “To what extent, if any, do you discuss climate change with others?” | 1 = not at all to 5 = a lot | Downstream communication behavior |
+| `cc_behavior_evacuate` | Behavior | “To what extent have you recently done or are currently doing the following to prepare for the impacts of climate change: create or maintain an emergency kit or evacuation plan?” | 1 = not at all to 5 = a lot | Downstream protective / adaptation behavior |
+| `cc_behavior_move` | Behavior | “To what extent have you recently done or are currently doing the following to prepare for the impacts of climate change: consider moving to a different neighborhood or area?” | 1 = not at all to 5 = a lot | Downstream protective / adaptation behavior |
+
+------------------------------------------------------------------------
+
+# 3. Exploratory data analysis
+
+The EDA serves one primary goal: identify which repeated attitudinal variables form coherent, distinct, and intervention-relevant **belief-network nodes**. Four diagnostic tools are used in sequence — correlation structure, item screening, hierarchical clustering, and EFA — and composite decisions are made only after consulting all four.
+
+## 3.1 Person-level averaged items
+
+```{r participant-averages}
+att_items_h <- screen_items_raw
+
+df_att_person <- df_long_h |>
+  dplyr::group_by(participant_id) |>
+  dplyr::summarise(across(any_of(att_items_h), mean_or_na),
+                   .groups = "drop")
+
+cat("Person-level averaged item dataset:",
+    nrow(df_att_person), "x", ncol(df_att_person), "\n")
+```
+
+## 3.2 Descriptives
+
+```{r attitude-descriptives}
+psych::describe(df_att_person |> dplyr::select(-participant_id)) |>
+  as.data.frame() |>
+  tibble::rownames_to_column("item") |>
+  dplyr::select(item, n, mean, sd, median, min, max, skew, kurtosis) |>
+  dplyr::mutate(across(where(is.numeric), ~round(.x, 2)))
+```
+
+```{r attitude-distributions, fig.height=10}
+df_att_person |>
+  dplyr::select(-participant_id) |>
+  tidyr::pivot_longer(everything(),
+                      names_to = "item", values_to = "value") |>
+  dplyr::filter(!is.na(value)) |>
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 20, fill = "steelblue", colour = "white") +
+  facet_wrap(~item, scales = "free_y", ncol = 4) +
+  theme_minimal(base_size = 10) +
+  labs(title = "Person-level averaged attitude items (0–1 scale)",
+       subtitle = "Averaged across all available waves after harmonisation",
+       x = NULL, y = "Count")
+```
+
+The person-level averaged attitude items show a dataset that is fully usable for screening: all candidate variables have observations for all participants after recoding and averaging across available waves. At this stage, the main issue is therefore not participant-level missingness, but the shape, overlap, and interpretability of the resulting averaged variables.
+
+The descriptives suggest that the sample leans clearly in a pro-climate direction on many of the core attitudinal items. This is especially evident for `cc1`, `cc5_world`, `cc_pol_car`, `cvcc9_cc`, `cvcc6`, and `cvcc4_should`, all of which have relatively high means and negative skew. In substantive terms, respondents tend on average to endorse the reality of climate change, report moderate to high concern, perceive substantial current and future harm, and support scientifically guided response and some climate policies. Several variables also show upper-end concentration, especially `cc1`, indicating that belief in climate change is already close to ceiling for a large share of respondents.
+
+The harm items show a coherent descriptive pattern. Perceived harm is highest for the world in general and for poor communities, lower for local community and wealthy U.S. communities, and consistently higher for future harm than for present harm. This pattern is substantively sensible and suggests that respondents see climate change as both unequally distributed and worsening over time.
+
+The norm-related variables are also differentiated in an interpretable way. `cvcc4_should` has the highest mean among the three norm-adjacent items, followed by `cvcc4_personal`, with `cvcc4_will` lowest. This suggests that respondents are more willing to endorse what people **should** do than to say they personally will do it, and are least willing to expect that others actually will do it. That already indicates that the injunctive, personal-intention, and descriptive-norm items should not be treated as interchangeable.
+
+More peripheral variables such as `pol_ideology`, `cvcc_worryothers`, `ew5`, and `ew6` are closer to the midpoint and show less pronounced skew. The screening-only risk items `cc10`–`cc12` also have more centered distributions and less obvious ceiling structure than the main climate-attitude items, suggesting that they may behave differently from the dense pro-climate core.
+
+The distribution plots reinforce these conclusions. Many variables remain visibly discrete and bounded even after averaging across waves, which is expected given the ordinal response formats and limited number of repeated measurements. Several items show clear ceiling tendency, while others such as `pol7`, `pol7_pi`, and the risk-perception items remain much coarser or more centered. These distributional features matter for later interpretation because they suggest that some variables reflect a broad pro-climate consensus in this sample, whereas others may capture more distinct or weakly aligned content.
+
+## 3.3 Correlation structure
+
+```{r attitude-corr}
+df_att_mv <- df_att_person |>
+  dplyr::select(-participant_id) |>
+  dplyr::select(where(~ mean(!is.na(.x)) >= 0.90))
+
+cor_att <- cor(df_att_mv, use = "pairwise.complete.obs")
+
+cat("Items entering multivariate screening:", ncol(df_att_mv), "\n")
+cat(paste(colnames(df_att_mv), collapse = ", "), "\n")
+```
+
+```{r attitude-corr-heatmap, fig.height=10, fig.width=10}
+pheatmap(cor_att,
+         clustering_method = "ward.D2",
+         cutree_rows = 5, cutree_cols = 5,
+         color = colorRampPalette(c("#2166ac","white","#d73027"))(100),
+         display_numbers = TRUE, number_format = "%.2f",
+         number_color = "black", fontsize_number = 6,
+         fontsize_row = 9, fontsize_col = 9, angle_col = 45,
+         main = "Item correlations — person-level averages",
+         border_color = NA)
+```
+
+The correlation heatmap shows that the repeated attitude battery is dominated by one broad positive climate-attitude field. Most of the belief, concern, present-harm, future-harm, policy-support, response-orientation, and some norm-related items are strongly and positively associated with one another. This indicates that, at the between-person level, respondents who score high on one pro-climate dimension also tend to score high on many others.
+
+The harm items are especially tightly integrated into this broader block. The `cc4_*` and `cc5_*` variables do not separate into sharply distinct present- and future-harm clusters. Instead, they are highly correlated both within and across the two families, suggesting that current and future harm perceptions are empirically very close in this sample. This does not rule out retaining separate present- and future-harm composites later, but it does mean that their distinction is likely to be more theoretical than strongly empirical.
+
+`cc6` and `cvcc6` are also embedded deeply within the same dense correlation block. This suggests that general climate worry and endorsement of individual action are not behaving like isolated constructs; instead, they track the broader pro-climate field quite closely. Similarly, `cc1` and the analytically recoded `cc2` show substantial positive associations with the main attitudinal core, indicating that climate-change belief and attribution are aligned with concern, harm perception, and policy support.
+
+By contrast, several variables appear more peripheral. `cvcc4_will`, `pol_ideology`, `pol7_pi`, `cvcc_worryothers`, `ew5`, and the risk-perception items do not sit as centrally inside the dense attitudinal block. They still relate to the broader system, but much more weakly. This is useful, because it suggests that these variables may add distinct information rather than simply duplicating the strongest pro-climate items.
+
+Two variables stand out as especially weakly connected: `ew6` and `cc11`. Both show relatively low correlations with most other candidates. At this stage they appear to be among the least embedded variables in the candidate set and are therefore natural candidates for closer scrutiny in the later screening steps.
+
+```{r attitude-redundancy, fig.height=4}
+cor_long <- cor_att |>
+  as.data.frame() |>
+  tibble::rownames_to_column("item1") |>
+  tidyr::pivot_longer(-item1, names_to = "item2", values_to = "r") |>
+  dplyr::filter(item1 < item2, !is.na(r), abs(r) > 0.80) |>
+  dplyr::arrange(desc(abs(r)))
+
+if (nrow(cor_long) > 0) {
+  ggplot(cor_long,
+         aes(x = r, y = reorder(paste(item1, "↔", item2), r))) +
+    geom_segment(aes(xend = 0.80, yend = paste(item1, "↔", item2)),
+                 colour = "gray70") +
+    geom_point(size = 3, colour = "#d73027") +
+    geom_vline(xintercept = 0.80, linetype = "dashed", colour = "gray50") +
+    theme_minimal(base_size = 10) +
+    labs(title = "Highly correlated pairs (|r| > 0.80)",
+         x = "Pearson r", y = NULL)
+}
+```
+
+The redundancy plot sharpens the picture from the full heatmap by focusing on item pairs with correlations above `.80`. The clearest result is that redundancy is concentrated in the harm system. Many of the strongest pairwise associations involve combinations of `cc4_*` and `cc5_*` items, indicating that these variables are not only coherent but in several cases close to interchangeable at the between-person level.
+
+Importantly, the strongest pairs are not limited to within-family comparisons such as present harm with present harm or future harm with future harm. Several very high correlations also occur across present- and future-harm items. This again suggests that the empirical distinction between present and future harm is modest relative to their large shared variance. If the final measurement model retains both, that choice should be understood as a substantively motivated simplification rather than a reflection of sharply separable empirical domains.
+
+The redundancy plot also shows that `cc6` and `cvcc6` overlap strongly with the harm items. General worry and endorsement of individual action appear to track the same broad pro-climate dimension that is already captured by the harm perceptions. This does not make these items useless, but it does mean that they may contribute limited unique information once broader composites are formed.
+
+Equally important is what does **not** appear in the high-correlation list. Variables such as `cvcc4_will`, `pol_ideology`, `pol7_pi`, `cvcc_worryothers`, `ew5`, `ew6`, and most of the risk-perception items do not show the same degree of redundancy with the dominant climate-attitude core. That suggests that some of these more peripheral variables may survive later screening precisely because they are less duplicative, even if they are not among the strongest correlates of the main pro-climate block.
+
+::: callout-note
+At this stage, the descriptives, distributions, correlation heatmap, and redundancy plot all suggest a dense and highly overlapping climate-attitude field, with especially strong redundancy among the harm items and substantial overlap between concern, harm, policy support, and climate-action orientation. The next EDA steps therefore ask a more refined question: which of these candidate variables remain well embedded yet sufficiently distinct to justify inclusion in a compact final node set once communality, partial-correlation structure, clustering, and factor solutions are taken into account?
+:::
+
+## 3.4 Item screening
+
+```{r item-screening, fig.height=6}
+df_screen <- df_att_mv |>
+  dplyr::select(where(~ sd(.x, na.rm = TRUE) > 0)) |>
+  dplyr::filter(complete.cases(dplyr::pick(everything())))
+
+cat("Complete cases for screening EFA:", nrow(df_screen), "\n")
+
+efa_screen <- psych::fa(df_screen, nfactors = 6,
+                         rotate = "oblimin", fm = "ml")
+
+pcor_mat <- corpcor::cor2pcor(cor(df_screen, use = "complete.obs"))
+rownames(pcor_mat) <- colnames(pcor_mat) <- colnames(df_screen)
+max_pcor <- apply(abs(pcor_mat), 1,
+                  function(x) max(x[x < 1], na.rm = TRUE))
+
+screening <- tibble::tibble(
+  item     = rownames(efa_screen$loadings),
+  h2       = round(as.numeric(efa_screen$communality), 3),
+  max_pcor = round(max_pcor[rownames(efa_screen$loadings)], 3)
+) |>
+  dplyr::mutate(status = dplyr::case_when(
+    h2 < 0.20 & max_pcor < 0.25 ~ "Drop — isolated",
+    h2 < 0.30                   ~ "Caution",
+    TRUE                        ~ "Keep"))
+
+screening |> dplyr::arrange(h2) |> print(n = 25)
+```
+
+```{r item-screening-plot, fig.height=6}
+ggplot(screening,
+       aes(x = h2, y = max_pcor, colour = status, label = item)) +
+  geom_point(size = 3) +
+  ggrepel::geom_text_repel(size = 3.5, max.overlaps = 25) +
+  geom_vline(xintercept = 0.20, linetype = "dashed", colour = "gray50") +
+  geom_hline(yintercept = 0.25, linetype = "dashed", colour = "gray50") +
+  scale_colour_manual(values = c("Drop — isolated" = "#d73027",
+                                  "Caution" = "#fc8d59",
+                                  "Keep" = "#4393c3")) +
+  theme_minimal(base_size = 11) +
+  labs(title = "Item screening — communality vs max partial correlation",
+       subtitle = "h² < 0.20 and max pcor < 0.25 → isolated",
+       x = "Communality (h²)", y = "Max partial correlation",
+       colour = NULL)
+```
+
+The screening step shows that most candidate variables are at least moderately embedded in the averaged attitude system, but they are not equally strong. Only one item, `pol7_pi`, falls below both screening thresholds and is therefore clearly isolated in this dataset. Its communality is very low (`h² = 0.162`) and its maximum partial correlation is also weak (`max_pcor = 0.20`), making it the only straightforward drop at this stage.
+
+Several other variables fall into a caution zone rather than a clear keep-or-drop category. Most notably, `cc11` has extremely low communality (`h² = 0.021`), while `cc10` and `cc12` also show weak shared variance relative to the rest of the battery. These three items therefore do not behave like strong members of the main climate-attitude field. However, because their maximum partial correlations are not negligible, they are better treated as weakly integrated or structurally distinct candidates than as outright noise.
+
+By contrast, the core climate-attitude items all show high communalities and generally moderate-to-strong maximum partial correlations. This is especially true for the harm items, the policy items, `cc1`, `cc6`, `cvcc9_cc`, `cvcc6`, and `cvcc4_should`, all of which appear deeply embedded in the common attitudinal structure. The screening results therefore reinforce the earlier correlation plots: the main issue is not whether the core items belong to the system, but whether some of them are too redundant to all survive into a compact final node set.
+
+## 3.5 Hierarchical clustering
+
+```{r clustering-setup}
+drop_items_screen <- screening |>
+  dplyr::filter(status == "Drop — isolated") |>
+  dplyr::pull(item)
+
+kept_items <- setdiff(colnames(df_att_mv), drop_items_screen)
+cat("Dropped by screening:", paste(drop_items_screen, collapse = ", "), "\n")
+cat("Retained:", paste(kept_items, collapse = ", "), "\n")
+
+df_kept <- df_att_mv |>
+  dplyr::select(all_of(kept_items)) |>
+  dplyr::filter(complete.cases(dplyr::pick(everything())))
+
+cat("Complete cases:", nrow(df_kept), "\n")
+
+cor_kept <- cor(df_kept, use = "complete.obs")
+dist_cor <- as.dist(1 - cor_kept)
+```
+
+```{r clustering-all, fig.height=10, fig.width=12}
+hc_ward     <- hclust(dist_cor, method = "ward.D2")
+hc_average  <- hclust(dist_cor, method = "average")
+hc_complete <- hclust(dist_cor, method = "complete")
+
+mi_matrix <- matrix(NA, ncol = ncol(df_kept), nrow = ncol(df_kept))
+colnames(mi_matrix) <- rownames(mi_matrix) <- colnames(df_kept)
+
+for (i in seq_len(ncol(df_kept))) {
+  for (j in i:ncol(df_kept)) {
+    mi_matrix[i, j] <- infotheo::mutinformation(
+      infotheo::discretize(df_kept[[i]]),
+      infotheo::discretize(df_kept[[j]])
+    )
+    mi_matrix[j, i] <- mi_matrix[i, j]
+  }
+}
+
+hc_mi <- hclust(
+  as.dist(1 - mi_matrix / max(mi_matrix, na.rm = TRUE)),
+  method = "ward.D2"
+)
+
+op <- par(mfrow = c(2, 2), mar = c(2, 2, 3, 1))
+
+plot(hc_ward, main = "Ward.D2", cex = 0.75, xlab = "", sub = "")
+rect.hclust(hc_ward, k = 8, border = 2:6)
+
+plot(hc_average, main = "Average", cex = 0.75, xlab = "", sub = "")
+rect.hclust(hc_average, k = 8, border = 2:6)
+
+plot(hc_complete, main = "Complete", cex = 0.75, xlab = "", sub = "")
+rect.hclust(hc_complete, k = 8, border = 2:6)
+
+plot(hc_mi, main = "Mutual information — Ward.D2", cex = 0.75, xlab = "", sub = "")
+rect.hclust(hc_mi, k = 8, border = 2:6)
+
+par(op)
+```
+
+The clustering results add useful structure to the dense correlation picture. Across linkage methods, and especially in the mutual-information dendrogram, the candidate items organize into a small number of recurring groups rather than a large set of sharply independent domains.
+
+The most stable and interpretable cluster is the future-harm family: `cc5_world`, `cc5_wealthUS`, `cc5_poorUS`, and `cc5_comm` group tightly together. A second nearby cluster contains the present-harm items together with the more general belief/concern indicators `cc3` and `cc6`, suggesting that present harm is psychologically closer to immediate climate concern than to a wholly separate harm domain.
+
+A third cluster contains `cc1`, `cc2`, `pol7`, the two policy-support items, `cvcc9_cc`, and `cvcc6`, with `pol_ideology` adjacent to that set. This is best read as a broader belief–policy–response orientation cluster rather than as a set of clearly separate constructs. The norm triplet — `cvcc4_should`, `cvcc4_will`, and `cvcc4_personal` — forms a clean local cluster of its own, which supports the idea that these three items belong to the same general norm/intention family even though they should not automatically be treated as the same construct.
+
+Finally, `ew5` and `ew6` sit in a peripheral cluster together with `cc10`–`cc12` and `cvcc_worryothers`. This is important: it suggests that weather risk, psychometric risk perception, and perceived public worry are related side-content, but they are not tightly fused with the dominant belief–harm–policy field. That makes them plausible screening candidates, but weaker candidates for the final compact node set.
+
+## 3.6 PCA
+
+```{r pca-scree, fig.height=5}
+eig <- eigen(cor_kept)
+
+data.frame(component = seq_along(eig$values),
+           eigenvalue = eig$values) |>
+  ggplot(aes(x = component, y = eigenvalue)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = round(eigenvalue, 2)),
+            vjust = -0.3, size = 3) +
+  theme_minimal(base_size = 11) +
+  labs(title = "Scree plot — averaged attitude items",
+       x = "Component", y = "Eigenvalue")
+```
+
+```{r pca-loadings, fig.height=8}
+n_pc <- min(5, ncol(cor_kept))
+loadings_pca <- as.data.frame(
+  eig$vectors[, 1:n_pc] %*% diag(sqrt(eig$values[1:n_pc])))
+rownames(loadings_pca) <- colnames(cor_kept)
+colnames(loadings_pca) <- paste0("PC", seq_len(n_pc))
+
+pheatmap(loadings_pca, cluster_cols = FALSE,
+         clustering_method = "ward.D2",
+         color = colorRampPalette(c("#d73027","white","#2166ac"))(100),
+         display_numbers = TRUE, number_format = "%.2f",
+         number_color = "black", fontsize_number = 8, fontsize_row = 9,
+         main = "PCA loadings — averaged attitude items",
+         border_color = NA)
+```
+
+The PCA results show a very strong first component. The scree plot is dominated by PC1 (`eigenvalue = 14.95`), with a steep drop to PC2 (`1.73`) and then a long shallow tail. This is the clearest indication in the full EDA that the repeated attitude battery is organized primarily as one broad between-person climate-attitude dimension rather than as many equally strong latent domains.
+
+The loading heatmap reinforces that interpretation. Most of the core climate items — belief, concern, harm, policy support, response orientation, and some norm-related content — load heavily on PC1, while later components capture more local contrasts at the margin. In particular, the later components pick up side structure involving weather risk, public worry, and the psychometric risk items, but these are clearly secondary to the dominant first component.
+
+This does not mean that only one composite should be retained. Rather, it means that any final node set must be understood as a parsimonious summary carved out of a very dense and largely shared pro-climate field. The purpose of later composite construction is therefore not to recover many empirically independent subdomains, but to retain a small number of substantively interpretable nodes from a strongly overlapping system.
+
+## 3.7 EFA
+
+```{r efa-parallel, fig.height=5}
+psych::fa.parallel(df_kept, fa = "fa", fm = "ml",
+                   main = "Parallel analysis — averaged attitude items")
+```
+
+```{r efa-solutions}
+safe_round <- function(x, d = 3) {
+  v <- tryCatch(as.numeric(x), error = function(e) NA_real_)
+  if (!length(v) || all(is.na(v))) return(NA)
+  round(v[1], d)
+}
+
+for (nf in 4:7) {
+  cat("\n\n=== EFA:", nf, "factors ===\n")
+  fit <- psych::fa(df_kept, nfactors = nf, rotate = "oblimin", fm = "ml")
+  print(fit$loadings, cutoff = 0.30, sort = TRUE)
+  cat("RMSEA:", safe_round(fit$RMSEA["RMSEA"]),
+      "  TLI:", safe_round(fit$TLI),
+      "  Var:", round(sum(fit$values[1:nf]) /
+                       length(fit$values) * 100, 1), "%\n")
+}
+```
+
+```{r efa-best, fig.height=9}
+efa_best     <- psych::fa(df_kept, nfactors = 6,
+                           rotate = "oblimin", fm = "ml")
+loadings_mat <- as.data.frame(unclass(efa_best$loadings))
+
+pheatmap(loadings_mat, cluster_cols = FALSE,
+         clustering_method = "ward.D2",
+         color = colorRampPalette(c("#d73027","white","#2166ac"))(100),
+         display_numbers = TRUE, number_format = "%.2f",
+         number_color = "black", fontsize_number = 7, fontsize_row = 9,
+         main = "EFA loadings — 6-factor solution", border_color = NA)
+```
+
+The EFA results suggest that the data support more than one factor, but not in a way that argues for a very large final node set. Parallel analysis points upward, but the practical interpretation of the factor solutions is more important than the raw recommended count alone. The 4-factor solution is still fairly coarse (`RMSEA = 0.088`, `TLI = 0.900`), the 5-factor solution improves somewhat (`RMSEA = 0.080`, `TLI = 0.918`), and the 6- and 7-factor solutions improve fit further (`RMSEA = 0.074` and `0.064`; `TLI = 0.930` and `0.947`, respectively). However, the gain from 6 to 7 factors is modest, and the 7-factor solution mainly adds complexity rather than a clearly indispensable new construct.
+
+The 6-factor solution is the most interpretable compromise. One factor is centered on policy support, response orientation, climate-action endorsement, and political positioning (`cc_pol_tax`, `cc_pol_car`, `cvcc9_cc`, `cvcc6`, `pol7`, and to a lesser extent `pol_ideology`). A second factor is a very clean norm/intention factor made up of `cvcc4_should`, `cvcc4_will`, and `cvcc4_personal`. A third factor captures a future/localized harm cluster, especially `cc5_wealthUS`, `cc5_comm`, and `cc5_poorUS`. A fourth factor is a weather-risk/preparedness factor anchored by `ew5` and `ew6`. A fifth factor is a general belief / problem-recognition factor centered on `cc1`, `cc2`, `cc3`, and `cc4_world`. The remaining harm items show cross-loadings rather than forming fully separate domains, which is consistent with the redundancy seen earlier.
+
+Equally important is what does *not* load cleanly. `cc10`, `cc11`, and `cc12` do not emerge as a strong, coherent retained factor in any practically compelling way. They look more like a weak psychometric side block than like central candidates for the final belief network. `cvcc_worryothers` also remains comparatively diffuse, and `pol7_pi` has already dropped out at the earlier screening stage. Overall, the EFA supports keeping a compact core of belief/concern, harm, policy/response, norms, politics, and weather risk, while treating the remaining candidates as auxiliary or screening-only variables rather than as final nodes.
+
+## 3.8 Wave-5 behavioral EDA
+
+```{r behavior-descriptives}
+psych::describe(df_w5_h |> dplyr::select(any_of(beh_items))) |>
+  as.data.frame() |>
+  tibble::rownames_to_column("item") |>
+  dplyr::select(item, n, mean, sd, median, min, max, skew, kurtosis) |>
+  dplyr::mutate(across(where(is.numeric), ~round(.x, 2)))
+```
+
+```{r behavior-distributions, fig.height=4}
+df_w5_h |>
+  dplyr::select(any_of(beh_items)) |>
+  tidyr::pivot_longer(everything(),
+                      names_to = "item", values_to = "value") |>
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 15, fill = "#E07B7B", colour = "white") +
+  facet_wrap(~item, scales = "free_y", ncol = 6) +
+  theme_minimal(base_size = 9) +
+  labs(title = "Wave-5 behavioral items (N = 870)",
+       x = NULL, y = "Count")
+```
+
+```{r behavior-corr, fig.height=5, fig.width=6}
+cor_beh <- df_w5_h |>
+  dplyr::select(any_of(beh_items)) |>
+  cor(use = "complete.obs")
+
+pheatmap(cor_beh, clustering_method = "ward.D2",
+         color = colorRampPalette(c("white", "#F1948A"))(100),
+         display_numbers = TRUE, number_format = "%.2f",
+         number_color = "black", fontsize_number = 9,
+         fontsize_row = 9, fontsize_col = 9,
+         main = "Behavioral item correlations (wave 5)",
+         border_color = NA)
+```
+
+```{r behavior-efa}
+df_beh <- df_w5_h |>
+  dplyr::select(any_of(beh_items)) |>
+  dplyr::filter(complete.cases(dplyr::pick(everything())))
+
+psych::fa.parallel(df_beh, fa = "fa", fm = "ml",
+                   main = "Parallel analysis — behavioral items")
+```
+
+```{r behavior-efa-solutions}
+for (nf in 1:3) {
+  cat("\n=== Behavioral EFA:", nf, "factor(s) ===\n")
+  fit <- psych::fa(df_beh, nfactors = nf,
+                   rotate = if (nf == 1) "none" else "oblimin",
+                   fm = "ml")
+  print(fit$loadings, cutoff = 0.30, sort = TRUE)
+  cat("RMSEA:", safe_round(fit$RMSEA[["RMSEA"]]),
+      " TLI:", safe_round(fit$TLI), "\n")
+}
+```
+
+The behavioral items show a much less favorable distribution than the attitude items: all six behaviors have relatively low means and strong positive skew, indicating that these actions are less common and more unevenly distributed than pro-climate attitudes in the sample. In particular, `cc_behavior_activ` and `cc_behavior_move` are concentrated near zero, which suggests that political activism and relocation are relatively uncommon behaviors.
+
+The factor results show some multidimensionality, but the evidence is mixed. The one-factor solution is acceptable but not especially strong (`RMSEA = 0.102`, `TLI = 0.936`), whereas the two-factor solution fits clearly better (`RMSEA = 0.058`, `TLI = 0.980`). However, that second factor is relatively thin: it is driven primarily by `cc_behavior_move`, with only partial support from `cc_behavior_evacuate`. The three-factor solution is not trustworthy, with degenerate loadings and inadmissible fit output.
+
+Substantively, the two-factor pattern is interpretable as a contrast between more routine, active mitigation behaviors (`meat`, `travel`, `activism`, `discussion`) and more protective or high-cost adaptation behaviors (`evacuate`, `move`). At the same time, the protective side is much less robust psychometrically than the active side. This means that the behavior block is best treated as clearly downstream but measurement-wise somewhat thinner than the main attitude block. For later modeling, a broad downstream `climate_behavior` composite is defensible as the primary outcome, while an active-versus-protective split can be retained as a secondary sensitivity analysis if needed.
+
+## 3.9 Composite decisions
+
+**Composite decisions — integrating the full EDA**
+
+The EDA indicates that the candidate battery is organized primarily as a dense shared pro-climate attitude field rather than as many sharply independent domains. The purpose of the final composites is therefore not to retain every variable that showed empirical signal, but to construct a compact, interpretable node set that avoids unnecessary duplication while still representing the main substantive domains.
+
+### `belief_concern` — `cc1` + `cc6`
+
+`cc1` and `cc6` are retained together as the final belief/concern composite. `cc1` captures endorsement that climate change is happening, while `cc6` captures personal worry or concern. Both are strongly embedded in the broader attitudinal field, and both load on the general belief / problem-recognition factor in the later EFA, although `cc6` does so more weakly than `cc1`. At the same time, the clustering results show that `cc1` and `cc6` are not closest neighbors: `cc6` sits nearer the present-harm / concern cluster, whereas `cc1` sits nearer the broader belief / policy / attribution cluster. The composite is therefore best understood as a theory-guided combination of two complementary climate-belief facets rather than as a pair singled out by local clustering alone.
+
+`cc3` is not retained because it plays a very similar substantive role to `cc6` but has narrower temporal coverage. `cc2` is also not retained as a final node: although it behaves reasonably well in screening and aligns with the broader belief field, it depends on an analytic recoding and does not add a sufficiently clean final domain beyond `cc1` and `cc6`.
+
+### `harm_present` — `cc4_world`, `cc4_wealthUS`, `cc4_poorUS`, `cc4_comm`
+
+The four present-harm items are retained as one composite, but this decision is somewhat more theory-guided than the earlier wording suggested. The items are strongly intercorrelated and clearly belong to the broader harm system, which favors retaining them together. However, the 6-factor EFA does not place them all on one clean present-harm factor: `cc4_world` loads with the general belief / problem-recognition factor, `cc4_wealthUS` and `cc4_comm` load on a different harm-related factor, and `cc4_poorUS` sits between these patterns. The retained composite is therefore justified mainly because the four items ask parallel present-harm questions across different targets and remain highly redundant empirically, not because they form a perfectly unified EFA cluster.
+
+### `harm_future` — `cc5_world`, `cc5_wealthUS`, `cc5_poorUS`, `cc5_comm`
+
+The four future-harm items are retained as one composite. Compared with the present-harm family, the future-harm items are somewhat cleaner empirically: they cluster more tightly, show very strong internal coherence, and remain one of the clearest high-redundancy families in the battery. Even here, however, the EDA shows substantial cross-family overlap with present harm. Retaining `harm_future` separately is therefore defensible because the present/future distinction is substantively meaningful and built into the survey design, not because the two families are sharply distinct empirical domains.
+
+### `policy_support` — `cc_pol_tax` + `cc_pol_car`
+
+The two direct policy items are retained as the final policy-support composite. They are parallel in wording and response format, correlate strongly, and load consistently within the broader policy / response field. `pol7` is not retained as part of this composite because it is a binary economic-tradeoff item rather than a direct policy-support indicator. Although it aligns with the same broader field, it is coarser and conceptually more mixed than the two policy items.
+
+### `trust_science` — `cvcc9_cc`
+
+`cvcc9_cc` is retained as a single-item node. It loads with the broader policy / response field, but its wording is conceptually specific: it captures deference to expert-guided climate response rather than direct policy support or personal climate action. Keeping it as a single-item node is therefore more defensible than folding it into the policy composite.
+
+### `social_norms` — `cvcc4_should`
+
+`cvcc4_should` is retained as the final norm-related node. The EDA shows that `cvcc4_should`, `cvcc4_will`, and `cvcc4_personal` form a coherent local norm/intention family, but they reflect different constructs. `cvcc4_should` captures an **injunctive norm**: what people ought to do. It is retained because this is the clearest norm construct among the available candidates and is the most defensible standalone indicator of perceived normative obligation around lower-carbon behavior. `cvcc4_will` is excluded because it reflects a **descriptive expectation** about whether others will act, and `cvcc4_personal` is excluded because it reflects personal intention rather than a social norm. The COVID framing remains a limitation, but among the available candidates `cvcc4_should` provides the clearest measure of perceived injunctive norms.
+
+### `politics` — `pol_ideology`
+
+`pol_ideology` is retained as the political background/context node. It is clearly related to the broader climate-attitude field but remains more peripheral than the core climate items, so it is best treated as contextual positioning rather than part of the attitudinal core itself. `pol7` and especially `pol7_pi` are not retained as final nodes: `pol7` overlaps with the broader policy / politics dimension but is too coarse and mixed for the final compact node set, while `pol7_pi` is the only item that clearly fails screening as isolated.
+
+### `weather_risk_prep` — `ew5` (ALT-SPEC: `ew6` excluded)
+
+**Note (2026-09-04): this section describes the EDA-stage screening result, not the final composite used in this file.** `ew5` and `ew6` emerged from screening as a coherent weather-risk/preparedness pair (see EDA above), but this file implements the ALT-SPEC sensitivity definition (see note at top of file): `weather_risk_prep` is `ew5` alone. `ew6` (self-reported preparedness *behavior*) is excluded from the final composite because it measures a different construct than worry/risk perception and was empirically more weakly connected to the rest of the system. It remains listed in the candidate/screening variables above and in the codebook because it was a genuine candidate at that stage — it is simply not part of the final node used in the SCM and all downstream models in this file.
+
+### Downstream behavior block — `climate_behavior`
+
+The wave-5 behavior items are retained only as downstream outcomes and not as part of the core belief network. The behavioral EDA suggests some multidimensionality, with a plausible split between more routine mitigation behaviors and thinner protective/adaptation behaviors. However, that split is not robust enough to serve as the primary measurement choice. For the main extended analysis, the most defensible outcome is therefore a single broad `climate_behavior` composite, with more differentiated behavior splits treated only as supplementary sensitivity analyses.
+
+::: {.callout-caution collapse="true"}
+### Variables not retained as final nodes
+
+- `cc2`: empirically viable in screening, but depends on an analytic recoding and overlaps heavily with the broader belief field
+- `cc3`: substantively similar to `cc6`, but with narrower temporal coverage
+- `cvcc6`: strongly embedded but conceptually redundant with the broader policy / response / concern field
+- `cvcc4_will`: descriptive expectation about others’ likely behavior, not the retained injunctive norm item
+- `cvcc4_personal`: personal intention, not a social expectation about others
+- `cvcc_worryothers`: related but comparatively diffuse and peripheral, without a compelling case for a standalone final node
+- `pol7`: useful in screening, but too coarse and conceptually mixed for the final compact node set
+- `pol7_pi`: the only item that clearly fails screening as isolated
+- `cc10`, `cc11`, `cc12`: weak and diffuse psychometric risk-perception side block, not central enough for the final network
+
+**Bottom line.** The final measurement model should remain compact. The most defensible retained nodes are `belief_concern`, `harm_present`, `harm_future`, `policy_support`, `trust_science`, `social_norms`, `politics`, and `weather_risk_prep`, with `climate_behavior` treated separately as a downstream outcome block. This preserves the main substantive domains while avoiding unnecessary duplication from the broader, highly overlapping attitudinal field.
+:::
+
+**Composite-decision summary.** Taken together, the EDA indicates that the candidate battery is organized primarily as a dense shared pro-climate attitude field rather than as many sharply independent domains. The final node set should therefore be understood as a compact, theory-guided summary carved out of that broader overlapping system, not as a set of empirically independent latent blocks. On that basis, we retain `belief_concern`, `harm_present`, `harm_future`, `policy_support`, `trust_science`, `social_norms`, `politics`, and `weather_risk_prep` as the main attitude/context nodes, and treat `climate_behavior` separately as a downstream wave-5 outcome. This preserves the main substantive domains while avoiding unnecessary duplication from the broader attitudinal field. The present-versus-future harm distinction is retained mainly for substantive interpretability rather than because the two families are sharply separable empirically, whereas `trust_science`, `social_norms`, and `politics` are retained as substantively specific single-item nodes.
+
+------------------------------------------------------------------------
+
+# 4. Composite construction
+
+This section converts the retained item set into the compact node set used in the later network and causal-discovery analyses. All repeated-attitude composites are constructed from the **person-level averaged items** created in Section 3.1. The resulting nodes therefore represent stable between-person positions rather than wave-specific states.
+
+## 4.1 Main attitude composites
+
+```{r composite-construction}
+df_main <- df_att_person |>
+  dplyr::transmute(
+    participant_id,
+
+    belief_concern = rowMeans(
+      dplyr::pick(cc1, cc6),
+      na.rm = TRUE
+    ),
+
+    harm_present = rowMeans(
+      dplyr::pick(cc4_world, cc4_wealthUS, cc4_poorUS, cc4_comm),
+      na.rm = TRUE
+    ),
+
+    harm_future = rowMeans(
+      dplyr::pick(cc5_world, cc5_wealthUS, cc5_poorUS, cc5_comm),
+      na.rm = TRUE
+    ),
+
+    policy_support = rowMeans(
+      dplyr::pick(cc_pol_tax, cc_pol_car),
+      na.rm = TRUE
+    ),
+
+    trust_science = cvcc9_cc,
+
+    social_norms = cvcc4_should,
+
+    politics = pol_ideology,
+
+    # ALT-SPEC (sensitivity check, see note at top of file): weather_risk_prep
+    # redefined as ew5 alone. ew6 (preparedness behavior) is excluded here --
+    # it measures a different construct (self-reported protective behavior,
+    # not worry/risk perception) and was empirically far more weakly
+    # connected to the rest of the system (see composite-validation numbers
+    # in the original file). Variable name is left unchanged so nothing
+    # downstream needs to be touched.
+    weather_risk_prep = ew5
+  )
+
+cat("Main composite dataset:", nrow(df_main), "x", ncol(df_main), "\n")
+cat("Any missing values in df_main:", any(is.na(df_main)), "\n")
+
+colSums(is.na(df_main))
+```
+
+::: callout-note
+The main belief-network dataset is intentionally compact. It retains the final node set supported by the EDA: `belief_concern`, `harm_present`, `harm_future`, `policy_support`, `trust_science`, `social_norms`, `politics`, and `weather_risk_prep`.
+
+The screening-only variables from Section 3 are **not** carried forward into `df_main`. Their role was to test whether they added distinct or necessary structure; the final network is built only from the retained composite set.
+:::
+
+## 4.2 Sensitivity analysis for `cc1` coding
+
+```{r cc1-sensitivity}
+df_long_cc1 <- df_long |>
+  dplyr::mutate(
+    cc1_mid = recode_cc1_midpoint(cc1),
+    cc1_na  = recode_cc1_dropdk(cc1),
+    cc6_h   = rescale01(na_special(cc6), from = c(1, 4))
+  )
+
+df_cc1_sens <- df_long_cc1 |>
+  dplyr::group_by(participant_id) |>
+  dplyr::summarise(
+    bel_mid = mean_or_na(rowMeans(cbind(cc1_mid, cc6_h), na.rm = TRUE)),
+    bel_na  = mean_or_na(rowMeans(cbind(cc1_na,  cc6_h), na.rm = FALSE)),
+    .groups = "drop"
+  )
+
+cat(
+  "Correlation between midpoint and drop-DK versions:",
+  round(cor(df_cc1_sens$bel_mid, df_cc1_sens$bel_na, use = "complete.obs"), 3),
+  "\n"
+)
+cat("Missing in drop-DK version:", sum(is.na(df_cc1_sens$bel_na)), "\n")
+```
+
+::: callout-note
+This sensitivity check asks whether the final `belief_concern` composite depends materially on how the “don’t know” response in `cc1` is handled. If the midpoint-coded and drop-DK versions correlate almost perfectly, the midpoint version can be retained as a pragmatic choice that preserves sample size without changing the substantive result.
+:::
+
+## 4.3 Wave-5 downstream behavior composite
+
+```{r climate-behavior-composite}
+df_behavior_w5 <- df_w5_h |>
+  dplyr::transmute(
+    participant_id,
+    beh_meat     = cc_behavior_meat,
+    beh_travel   = cc_behavior_travel,
+    beh_activ    = cc_behavior_activ,
+    beh_discuss  = cc_behavior_discuss,
+    beh_evacuate = cc_behavior_evacuate,
+    beh_move     = cc_behavior_move,
+
+    climate_behavior = rowMeans(
+      dplyr::pick(
+        beh_meat, beh_travel, beh_activ,
+        beh_discuss, beh_evacuate, beh_move
+      ),
+      na.rm = TRUE
+    )
+  )
+
+cat("Wave-5 behavior dataset:", nrow(df_behavior_w5), "\n")
+cat("Missing climate_behavior:", sum(is.na(df_behavior_w5$climate_behavior)), "\n")
+cat(
+  "climate_behavior alpha =",
+  round(psych::alpha(
+    df_behavior_w5 |>
+      dplyr::select(
+        beh_meat, beh_travel, beh_activ,
+        beh_discuss, beh_evacuate, beh_move
+      )
+  )$total$raw_alpha, 3),
+  "\n"
+)
+```
+
+::: callout-note
+The wave-5 behavior block is treated as a **downstream outcome** rather than as part of the core belief network. Although the EDA suggested some possible multidimensionality, the primary outcome used in the main extended analysis is a single broad `climate_behavior` composite. More differentiated behavioral splits can still be explored later as sensitivity analyses if needed, but they are not part of the primary measurement model.
+:::
+
+## 4.4 Analysis datasets
+
+```{r analysis-datasets}
+df_extended <- df_main |>
+  dplyr::inner_join(
+    df_behavior_w5 |>
+      dplyr::select(participant_id, climate_behavior),
+    by = "participant_id"
+  )
+
+cat("Main belief-network dataset: N =", nrow(df_main), "\n")
+cat("Extended (+ behavior) dataset: N =", nrow(df_extended), "\n")
+```
+
+::: callout-important
+**Final data structure**
+
+| Dataset | N | Source | Purpose |
+|----------------|---------------:|----------------------|-------------------|
+| `df_main` | `r nrow(df_main)` | Person-level averages of retained repeated-attitude items | Main belief-network and causal-discovery analyses |
+| `df_extended` | `r nrow(df_extended)` | `df_main` plus wave-5 `climate_behavior` | Extended downstream behavior analysis |
+
+The main analyses are based on stable participant-level averages of the retained attitude nodes. The extended dataset adds the downstream wave-5 behavioral outcome so that later sections can test whether the stable belief network is meaningfully related to later climate-related behavior.
+:::
+
+```{r}
+df_long_h_pre5 <- df_long_h |> dplyr::filter(wave <= 4)
+
+df_att_person_pre5 <- df_long_h_pre5 |>
+  dplyr::group_by(participant_id) |>
+  dplyr::summarise(across(any_of(att_items_h), mean_or_na), .groups = "drop")
+
+df_main_pre5 <- df_att_person_pre5 |>
+  dplyr::transmute(
+    participant_id,
+    belief_concern    = rowMeans(dplyr::pick(cc1, cc6), na.rm = TRUE),
+    harm_present      = rowMeans(dplyr::pick(cc4_world, cc4_wealthUS, cc4_poorUS, cc4_comm), na.rm = TRUE),
+    harm_future       = rowMeans(dplyr::pick(cc5_world, cc5_wealthUS, cc5_poorUS, cc5_comm), na.rm = TRUE),
+    policy_support    = rowMeans(dplyr::pick(cc_pol_tax, cc_pol_car), na.rm = TRUE),
+    trust_science     = cvcc9_cc,
+    social_norms      = cvcc4_should,
+    politics          = pol_ideology,
+    weather_risk_prep = ew5  # ALT-SPEC: ew5 alone, see note at top of file
+  )
+
+df_main_allwave     <- df_main
+df_extended_allwave <- df_extended
+
+df_main     <- df_main_pre5
+df_extended <- df_main_pre5 |>
+  dplyr::inner_join(df_behavior_w5 |> dplyr::select(participant_id, climate_behavior), by = "participant_id")
+```
+
+# 5. Composite validation
+
+This section checks whether the retained composites behave as intended after construction. The aim is not to re-run the item-level EDA, but to verify that the final node set is coherent, interpretable, and suitable for the later network analyses.
+
+## 5.1 Internal consistency
+
+```{r composite-reliability}
+r2 <- function(x, y) round(cor(x, y, use = "complete.obs"), 3)
+
+cat("=== Main attitude composites ===\n")
+
+cat("belief_concern r(cc1, cc6) =",
+    r2(df_att_person$cc1, df_att_person$cc6), "\n")
+
+cat("harm_present alpha =",
+    round(psych::alpha(
+      df_att_person |>
+        dplyr::select(cc4_world, cc4_wealthUS, cc4_poorUS, cc4_comm)
+    )$total$raw_alpha, 3), "\n")
+
+cat("harm_future alpha =",
+    round(psych::alpha(
+      df_att_person |>
+        dplyr::select(cc5_world, cc5_wealthUS, cc5_poorUS, cc5_comm)
+    )$total$raw_alpha, 3), "\n")
+
+cat("policy_support r(cc_pol_tax, cc_pol_car) =",
+    r2(df_att_person$cc_pol_tax, df_att_person$cc_pol_car), "\n")
+
+cat("weather_risk_prep (ALT-SPEC) = ew5 alone -- no internal-consistency stat applicable\n")
+cat("  [reference only] r(ew5, ew6) =",
+    r2(df_att_person$ew5, df_att_person$ew6),
+    "-- NOT used to construct weather_risk_prep in this file; ew6 is excluded\n")
+
+cat("trust_science = single item (cvcc9_cc)\n")
+cat("social_norms = single item (cvcc4_should)\n")
+cat("politics = single item (pol_ideology)\n")
+
+cat("\n=== Downstream behavior composite ===\n")
+cat("climate_behavior alpha =",
+    round(psych::alpha(
+      df_behavior_w5 |>
+        dplyr::select(
+          beh_meat, beh_travel, beh_activ,
+          beh_discuss, beh_evacuate, beh_move
+        )
+    )$total$raw_alpha, 3), "\n")
+```
+
+::: callout-note
+The strongest multi-item composites are expected to be the harm nodes, because they are made from parallel item families. `belief_concern`, `policy_support`, and `weather_risk_prep` are intentionally compact and are therefore evaluated mainly through their inter-item correlations rather than long-form reliability alone. `trust_science`, `social_norms`, and `politics` are single-item nodes by design and should be interpreted as such.
+
+For the downstream outcome, the main question is whether the six behavioral items are coherent enough to justify a broad summary index of climate-related behavior at wave 5. The composite does not need to be perfectly homogeneous to serve that role, but it should show at least moderate internal consistency.
+:::
+
+## 5.2 Composite distributions
+
+```{r composite-distributions, fig.height=7}
+df_main |>
+  dplyr::select(-participant_id) |>
+  tidyr::pivot_longer(
+    everything(),
+    names_to = "composite",
+    values_to = "value"
+  ) |>
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 20, fill = "steelblue", colour = "white") +
+  facet_wrap(~composite, scales = "free_y", ncol = 4) +
+  theme_minimal(base_size = 11) +
+  labs(
+    title = "Distributions of retained belief-network nodes",
+    subtitle = "Participant-level averages on a 0–1 scale",
+    x = "Composite score",
+    y = "Count"
+  )
+```
+
+```{r climate-behavior-distribution, fig.height=4}
+df_behavior_w5 |>
+  ggplot(aes(x = climate_behavior)) +
+  geom_histogram(bins = 20, fill = "#E07B7B", colour = "white") +
+  theme_minimal(base_size = 11) +
+  labs(
+    title = "Distribution of wave-5 climate_behavior",
+    x = "Composite score",
+    y = "Count"
+  )
+```
+
+::: callout-note
+These plots show whether the retained composites preserve usable between-person variation after averaging and aggregation. Skew is not itself a problem here, but it does matter for later modeling because several of the retained nodes remain bounded and visibly non-normal. That is why the network analysis uses a nonparanormal transformation rather than the raw composite scores.
+:::
+
+## 5.3 Composite correlation matrix
+
+```{r composite-corr, fig.height=7, fig.width=7}
+cor_composites <- df_main |>
+  dplyr::select(-participant_id) |>
+  cor(use = "pairwise.complete.obs")
+
+pheatmap(
+  cor_composites,
+  clustering_method = "ward.D2",
+  color = colorRampPalette(c("white", "#d73027"))(100),
+  display_numbers = TRUE,
+  number_format = "%.2f",
+  number_color = "black",
+  fontsize_number = 9,
+  fontsize_row = 10,
+  fontsize_col = 10,
+  angle_col = 45,
+  main = "Correlations among retained belief-network nodes",
+  border_color = NA
+)
+```
+
+::: callout-note
+This matrix is the compact summary of the final belief-network node set. The key empirical question is whether the retained nodes still form one dense positive block, or whether some now behave more like peripheral contextual variables. Based on the item-level EDA, a dense positive climate-attitude field is expected, with especially strong overlap among `belief_concern`, the two harm composites, and `policy_support`, and somewhat more peripheral placement for `politics` and `weather_risk_prep`.
+:::
+
+## 5.4 Stable attitudes and downstream behavior
+
+```{r behavior-att-cors, fig.height=5}
+df_extended |>
+  dplyr::select(-participant_id) |>
+  cor(use = "pairwise.complete.obs") |>
+  as.data.frame() |>
+  tibble::rownames_to_column("from") |>
+  tidyr::pivot_longer(-from, names_to = "to", values_to = "r") |>
+  dplyr::filter(to == "climate_behavior",
+                from != "climate_behavior") |>
+  dplyr::arrange(desc(r)) |>
+  ggplot(aes(x = reorder(from, r), y = r, fill = r > 0)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(
+    values = c("TRUE" = "#2166ac", "FALSE" = "#d73027"),
+    guide = "none"
+  ) +
+  theme_minimal(base_size = 11) +
+  labs(
+    title = "Stable attitudes and later climate behavior",
+    subtitle = "Bivariate associations in the extended sample",
+    x = NULL,
+    y = "Pearson r"
+  )
+```
+
+::: callout-note
+This figure is a descriptive bridge to the later extended analyses. It does not identify causal effects, but it shows which stable attitude domains are most strongly associated with later climate-related behavior. This is especially relevant for `social_norms`, `policy_support`, and `belief_concern`, because those are the nodes most likely to matter for intervention-oriented interpretation later on.
+:::
+
+## 5.5 Validation summary before network analysis
+
+**Composite-validation summary.** The retained measurement model is compact but usable. The two harm composites are the most internally coherent nodes, `belief_concern` and `policy_support` are strong short composites, and `weather_risk_prep` is better understood as a weaker contextual index than as a central ideological dimension. At the same time, the retained composites remain strongly intercorrelated, so they should not be interpreted as sharply independent latent domains. Rather, they are a parsimonious summary of a dense and overlapping between-person climate-attitude field. The downstream `climate_behavior` composite is sufficiently coherent for use as a broad wave-5 behavioral outcome, but it remains conceptually broader and measurement-wise thinner than the main attitude block.
+
+------------------------------------------------------------------------
+
+# 6. Network analysis
+
+This section estimates the **conditional association structure** among the retained composite nodes. The goal is descriptive: to identify which nodes remain uniquely connected once the shared variance of the broader climate-attitude field is partialled out.
+
+The network estimated here is a **Gaussian graphical model (GGM)**. In a GGM, each edge represents a **partial correlation**: the association between two nodes after conditioning on all other nodes in the graph. Equivalently, the edge weights are derived from the inverse covariance matrix (the precision matrix). The resulting graph is **undirected** and should be interpreted as a map of unique between-person associations, not as a causal graph.
+
+A GGM is appropriate here because the retained nodes are **person-level composite scores**, not raw categorical items. Most nodes are either averages of multiple ordinal items or averages across repeated waves, so they take on many distinct values and behave more like bounded continuous variables than like binary or nominal measurements. At the same time, these composites remain visibly skewed and bounded, so the analysis uses a **nonparanormal transformation** before estimation. This yields a semiparametric Gaussian-copula version of the GGM, which is more defensible than assuming strict multivariate normality of the raw composite scores.
+
+The main network is estimated on the eight retained attitudinal/context nodes. The extended network adds `climate_behavior` as a downstream wave-5 outcome. Even in the extended graph, however, the estimated network remains an undirected conditional association map rather than a directional model.
+
+## 6.1 Node sets and transformation
+
+```{r network-setup}
+suppressPackageStartupMessages({
+  library(huge)
+  library(qgraph)
+  library(bootnet)
+})
+
+main_nodes <- c(
+  "belief_concern",
+  "harm_present",
+  "harm_future",
+  "policy_support",
+  "trust_science",
+  "social_norms",
+  "politics",
+  "weather_risk_prep"
+)
+
+
+extended_nodes <- c(main_nodes, "climate_behavior")
+
+node_labels <- c(
+  belief_concern       = "Belief /\nConcern",
+  harm_present         = "Present\nHarm",
+  harm_future          = "Future\nHarm",
+  policy_support       = "Policy\nSupport",
+  trust_science = "Trust\nScience",
+  social_norms         = "Social\nNorms",
+  politics             = "Politics",
+  weather_risk_prep    = "Weather\nRisk",
+  climate_behavior     = "Climate\nBehavior"
+)
+
+node_colors <- c(
+  # 2026-09-05: lightened further ("more pastel-y, like GGM") -- must stay
+  # byte-for-byte identical to node_family_colors in r_patches/03_figure_style.R
+  belief_concern       = "#D5ECF9",
+  harm_present         = "#D5ECF9",
+  harm_future          = "#D5ECF9",
+  policy_support       = "#D5ECF9",
+  trust_science = "#D5ECF9",
+  social_norms         = "#EDDEF2",
+  politics             = "#D5F1E2",
+  weather_risk_prep    = "#FCEBD1",
+  climate_behavior     = "#F8D7D2"
+)
+
+# main network data
+df_net_main_raw <- df_main |>
+  dplyr::select(all_of(main_nodes))
+
+df_net_main <- df_net_main_raw |>
+  huge::huge.npn(npn.func = "truncation") |>
+  as.data.frame()
+
+colnames(df_net_main) <- main_nodes
+
+# extended network data
+df_net_ext_raw <- df_extended |>
+  dplyr::select(all_of(extended_nodes))
+
+df_net_ext <- df_net_ext_raw |>
+  huge::huge.npn(npn.func = "truncation") |>
+  as.data.frame()
+
+colnames(df_net_ext) <- extended_nodes
+
+cat("Main nodes:", paste(main_nodes, collapse = ", "), "\n")
+cat("Extended nodes:", paste(extended_nodes, collapse = ", "), "\n")
+```
+
+::: callout-note
+A Gaussian-copula interpretation means that the observed variables do not themselves need to be normally distributed. Instead, it assumes that their dependence structure can be approximated by a multivariate normal distribution after monotone marginal transformation. The nonparanormal transformation is used here to make that assumption more plausible for bounded, skewed composite scores without claiming that the raw data are truly normal. In `huge::huge.npn(..., npn.func = "truncation")`, each node is transformed separately by ranking the observed values, converting those ranks to empirical cumulative probabilities, shrinking the most extreme probabilities slightly inward to avoid infinities, and then mapping them to inverse-normal scores. This preserves rank order but changes spacing, so skewed or ceiling-prone marginals become more compatible with Gaussian-based methods. The transformation therefore does not add causal information or literally normalize the data; it is a semiparametric preprocessing step that makes GGMs and Gaussian conditional-independence tests more defensible for these retained composite nodes.
+
+Because the network is estimated on retained composite scores rather than on the original categorical item responses, a Gaussian graphical model is more appropriate here than an Ising model or a mixed graphical model. Those alternatives would be more natural if the analysis were conducted directly at the raw item level.
+:::
+
+## 6.2 Transformed distributions
+
+```{r npn-distributions, fig.height=9}
+# df_net_main |>
+#   tidyr::pivot_longer(everything(),
+#                       names_to = "node", values_to = "value") |>
+#   ggplot(aes(x = value)) +
+#   geom_histogram(bins = 25, fill = "steelblue", colour = "white") +
+#   facet_wrap(~node, scales = "free_y", ncol = 4) +
+#   theme_minimal(base_size = 10) +
+#   labs(
+#     title = "Main network nodes after nonparanormal transformation",
+#     subtitle = "Transformed participant-level composite scores",
+#     x = NULL,
+#     y = "Count"
+#   )
+
+df_net_ext |>
+  tidyr::pivot_longer(everything(),
+                      names_to = "node", values_to = "value") |>
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 25, fill = "steelblue", colour = "white") +
+  facet_wrap(~node, scales = "free_y", ncol = 3) +
+  theme_minimal(base_size = 10) +
+  labs(
+    title = "Extended network nodes after nonparanormal transformation",
+    subtitle = "The downstream climate_behavior node is transformed together with the attitude nodes",
+    x = NULL,
+    y = "Count"
+  )
+```
+
+::: callout-note
+These plots are diagnostic rather than substantive. The first shows the transformed distributions for the main retained belief-network nodes; the second shows the corresponding transformed distributions in the extended dataset, including climate_behavior.
+
+This makes clear that `climate_behavior` is treated consistently with the other nodes in the extended Gaussian graphical model: it is entered as the same person-level composite, then transformed using the same nonparanormal procedure before network estimation.
+:::
+
+## 6.3 Main network: retained attitude and context nodes
+
+```{r network-main, fig.height=7, fig.width=7}
+network_main <- estimateNetwork(
+  df_net_main,
+  default   = "EBICglasso",
+  tuning    = 0.5,
+  corMethod = "cor"
+)
+
+layout_main <- qgraph::averageLayout(getWmat(network_main))
+
+plot(
+  network_main,
+  layout    = layout_main,
+  labels    = node_labels[main_nodes],
+  color     = node_colors[main_nodes],
+  theme     = "colorblind",
+  vsize     = 14,
+  label.cex = 0.8,
+  title     = "Main belief network",
+  title.cex = 1.2,
+  mar       = c(3, 3, 6, 3)
+)
+```
+
+```{r network-main-edges}
+edge_table_from_W <- function(W) {
+  idx <- which(upper.tri(W) & W != 0, arr.ind = TRUE)
+
+  if (nrow(idx) == 0) {
+    return(tibble::tibble(
+      from = character(),
+      to = character(),
+      weight = numeric(),
+      abs_weight = numeric()
+    ))
+  }
+
+  tibble::tibble(
+    from   = rownames(W)[idx[, 1]],
+    to     = colnames(W)[idx[, 2]],
+    weight = W[idx]
+  ) |>
+    dplyr::mutate(
+      abs_weight = abs(weight),
+      weight     = round(weight, 3),
+      abs_weight = round(abs_weight, 3)
+    ) |>
+    dplyr::arrange(dplyr::desc(abs_weight))
+}
+
+get_edge_weight <- function(tbl, a, b) {
+  row <- tbl[(tbl$from == a & tbl$to == b) | (tbl$from == b & tbl$to == a), ]
+  if (nrow(row) == 0) return(NA_real_)
+  row$weight[1]
+}
+
+W_main <- network_main$graph
+edge_table_main <- edge_table_from_W(W_main)
+edge_table_main
+```
+
+The main Gaussian graphical model remains fairly dense after regularization: 24 of the 28 possible edges are retained. This means the final node set still behaves as a strongly interconnected between-person climate-attitude field rather than as a collection of near-independent domains. At the same time, the retained edges are not all equally strong, so the graph still reveals a meaningful conditional structure inside that broader shared field.
+
+The strongest unique association in the main network is between `harm_present` and `harm_future` (`r sprintf("weight = %.3f", get_edge_weight(edge_table_main, "harm_present", "harm_future"))`). This is substantively important. Even after controlling for all other retained nodes, present and future harm remain tightly linked, suggesting that these two composites are not merely correlated because both belong to a general pro-climate attitude factor. Rather, they still form the clearest residual backbone of the final belief network. The next strongest edge is between `policy_support` and `trust_science` (`r sprintf("weight = %.3f", get_edge_weight(edge_table_main, "policy_support", "trust_science"))`), indicating that support for concrete climate policy and endorsement of expert-guided response remain closely connected once the rest of the system is partialled out.
+
+`belief_concern` appears to play an important bridging role in the main graph. It retains specific links to `harm_present` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "belief_concern", "harm_present"))`), `harm_future` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "belief_concern", "harm_future"))`), `trust_science` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "belief_concern", "trust_science"))`), and `policy_support` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "belief_concern", "policy_support"))`). This pattern suggests that the belief/concern node sits between the harm-perception side of the system and the response/policy side, rather than collapsing entirely into either one. In other words, once the broader common climate-attitude variance is controlled, endorsement and concern still function as a meaningful connector across the network.
+
+`social_norms` is also not simply absorbed into the shared climate-attitude field. Its clearest residual tie is to `trust_science` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "social_norms", "trust_science"))`), with a smaller but still retained link to `policy_support` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "social_norms", "policy_support"))`). That makes the norm node interpretable as part of the response-facing side of the network rather than as part of the harm backbone. This is useful for the later intervention question: norms survive as a specific node with their own conditional placement, even in a dense system.
+
+`weather_risk_prep` and `politics` look more peripheral than the core harm/policy/belief block. `weather_risk_prep` nevertheless retains interpretable links, especially to `harm_present` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "weather_risk_prep", "harm_present"))`) and `belief_concern` (`r sprintf("%.3f", get_edge_weight(edge_table_main, "weather_risk_prep", "belief_concern"))`), which is substantively coherent: personal exposure to weather risk aligns more closely with concrete harm salience than with abstract policy or norm positioning. `politics` remains in the graph, but visually and substantively it reads more as a background-context node than as one of the central structural anchors of the network.
+
+## 6.4 Edge-accuracy bootstrap
+
+```{r network-main-bootstrap}
+set.seed(123)
+
+boot_main <- bootnet::bootnet(
+  network_main,
+  nBoots     = 1000,
+  type       = "nonparametric",
+  statistics = "edge",
+  verbose    = FALSE,
+  nCores     = max(1, parallel::detectCores() - 1)
+)
+```
+
+```{r network-main-bootstrap-plot, fig.height=6}
+plot(boot_main, labels = FALSE, order = "sample", plot = "interval")
+```
+
+The bootstrap supports a cautious interpretation of the main graph. The point is not to make strong claims about node centrality rankings, but to check how precisely the retained edge weights are estimated. In that sense, the bootstrap is most informative about the overall backbone of the network: the largest edges are the most defensible to describe, whereas smaller peripheral edges should be treated more tentatively. The practical implication is that the harm backbone, the policy–response link, and the main bridging role of `belief_concern` are the most interpretable parts of the graph, while fine-grained differences among weaker edges should not be overread.
+
+## 6.5 Extended network: adding downstream climate behavior
+
+```{r network-extended, fig.height=7, fig.width=7}
+network_ext <- estimateNetwork(
+  df_net_ext,
+  default   = "EBICglasso",
+  tuning    = 0.5,
+  corMethod = "cor"
+)
+
+layout_ext <- qgraph::averageLayout(getWmat(network_ext))
+
+plot(
+  network_ext,
+  layout    = layout_ext,
+  labels    = node_labels[extended_nodes],
+  color     = node_colors[extended_nodes],
+  theme     = "colorblind",
+  vsize     = 14,
+  label.cex = 0.75,
+  title     = "Extended network — attitudes and downstream behavior",
+  title.cex = 1.1,
+  mar       = c(3, 3, 6, 3)
+)
+```
+
+```{r network-extended-edges}
+W_ext <- network_ext$graph
+edge_table_ext <- edge_table_from_W(W_ext)
+edge_table_ext
+```
+
+Adding `climate_behavior` does not fundamentally reorganize the attitudinal network. The same two core links remain dominant in the extended graph: `harm_present`–`harm_future` is again the strongest edge (`r sprintf("%.3f", get_edge_weight(edge_table_ext, "harm_present", "harm_future"))`), and `policy_support`–`trust_science` remains second (`r sprintf("%.3f", get_edge_weight(edge_table_ext, "policy_support", "trust_science"))`). This is important because it shows that the downstream behavior node does not replace or distort the main structure; instead, it attaches to a network whose backbone is already well defined.
+
+The most notable behavior-related finding is that `weather_risk_prep` has the strongest specific connection to `climate_behavior` (`r sprintf("%.3f", get_edge_weight(edge_table_ext, "weather_risk_prep", "climate_behavior"))`). In fact, this is the only behavior edge that appears among the ten strongest edges in the extended network. That suggests that, once the stable attitude system is conditioned on itself, later climate-related behavior is linked most specifically to concrete weather-risk orientation rather than to the general pro-climate field in an undifferentiated way. This is substantively plausible, especially because the downstream behavior composite includes not only mitigation-type actions but also more protective or adaptation-like actions.
+
+At the same time, `climate_behavior` sits at the edge of the graph rather than at its center. That is the expected pattern for a downstream outcome node. The extended network therefore should not be read as saying that behavior is just another interchangeable attitude indicator. Rather, it suggests that later behavior retains at least one specific conditional connection to the stable belief system, but remains structurally more peripheral than the core attitudinal nodes. Any additional behavior edges that survive are weaker than the main within-attitude edges and should be interpreted accordingly.
+
+## 6.6 Network-estimation summary
+
+The GGM refines the correlation matrix rather than overturning it. The retained nodes still form a dense positive climate-attitude field, but once shared variance is partialled out the residual structure is not uniform. Three features stand out. First, `harm_present` and `harm_future` form the clearest residual backbone of the system. Second, `policy_support`, `trust_science`, and `social_norms` define a more response-facing cluster. Third, `belief_concern` occupies a bridging position between the harm side and the response/policy side of the network. By contrast, `politics` and `weather_risk_prep` are more peripheral, although `weather_risk_prep` still retains interpretable ties to the harm side of the graph.
+
+In the extended network, the same backbone remains visible in the wave-5 subsample, and `climate_behavior` attaches most clearly to `weather_risk_prep`. This is substantively plausible because the behavioral composite mixes mitigation-type actions with more protective or adaptation-like actions. The network analysis therefore does not imply that behavior is simply another interchangeable attitude indicator. Instead, it suggests that later behavior retains a small number of specific conditional links to the stable belief system while remaining structurally more peripheral than the core attitude nodes. These results are descriptive rather than causal: the GGM identifies which associations remain uniquely visible once the broader shared climate-attitude field is partialled out.
+
+# 7. Causal discovery
+
+The causal-discovery stage is used here as a hypothesis-generating tool rather than as a procedure expected to recover a unique true causal graph from observational survey composites. FCI is treated as the primary analysis because latent common causes are plausible in this setting, whereas PC-stable serves as a sensitivity analysis under causal sufficiency. The main empirical goal is therefore to identify which adjacencies recur robustly across algorithms, alpha thresholds, and bootstrap resamples, and only secondarily to examine whether a smaller subset of orientations appears stable enough to inform later modeling. Accordingly, adjacency is interpreted more confidently than direction throughout this section.
+
+Constraint-based causal discovery is applied to the nonparanormal-transformed composite scores using two complementary algorithms:
+
+- **FCI** as the primary analysis, because it allows for latent confounding and returns a PAG.
+- **PC-stable** as a sensitivity analysis, because it assumes causal sufficiency and returns a CPDAG.
+
+Both algorithms are run at `α = 0.05` and `α = 0.01`. The stricter threshold is useful because it yields a sparser graph and provides a more conservative visual reference, but neither threshold is treated as definitive on its own. A nonparametric bootstrap with `N = 2500` resamples is then run separately at both alpha levels. The bootstrap is used to summarize how often each adjacency and each endpoint mark recurs across resamples. These proportions are examined first within each alpha level and then after pooling raw counts across both alpha levels. The resulting pooled summaries are used to visualize a dominant-mark backbone, not to claim that every displayed orientation is equally well identified.
+
+::: callout-important
+**On interpreting PAGs and CPDAGs.**
+
+A **PAG** from FCI allows for latent common causes. Its endpoint marks distinguish stronger from weaker orientation statements:
+
+| Mark pair | Interpretation |
+|-----------------------|-------------------------------------------------|
+| Tail — Arrowhead (`X → Y`) | `X` is an ancestor of `Y`; no latent common cause is needed for that edge |
+| Arrowhead — Arrowhead (`X ↔ Y`) | Compatible with latent common cause |
+| Circle — Arrowhead (`X ○→ Y`) | `Y` is not an ancestor of `X`, but the status of `X` remains uncertain |
+| Circle — Circle (`X ○—○ Y`) | Orientation unresolved |
+
+A **CPDAG** from PC assumes no latent common causes. Directed edges are orientation-invariant within the equivalence class, whereas undirected edges remain unresolved. Because these survey composites are likely to share unmeasured determinants, PC is treated here as a sensitivity analysis rather than as the primary causal representation.
+:::
+
+## 7.1 Setup
+
+The causal-discovery analysis is conducted on the eight retained attitude/context nodes used in the main GGM: `belief_concern`, `harm_present`, `harm_future`, `policy_support`, `trust_science`, `social_norms`, `politics`, and `weather_risk_prep`.
+
+```{r causal-setup}
+suppressPackageStartupMessages({
+  library(pcalg)
+  library(graph)
+  library(Rgraphviz)
+  library(ggplot2)
+  library(dplyr)
+  library(ggraph)
+  library(tidygraph)
+  library(qgraph)
+})
+
+node_order_cd <- c(
+  "belief_concern", "harm_present", "harm_future",
+  "policy_support", "trust_science", "social_norms",
+  "politics", "weather_risk_prep"
+)
+
+agg_data <- df_net_main[, node_order_cd]
+p        <- length(node_order_cd)
+
+suffStat_gauss <- list(C = cor(agg_data), n = nrow(agg_data))
+
+abbr <- c(
+  belief_concern       = "BC",
+  harm_present         = "HP",
+  harm_future          = "HF",
+  policy_support       = "PS",
+  trust_science         = "TS",
+  social_norms         = "SN",
+  politics             = "POL",
+  weather_risk_prep    = "WR"
+)
+
+cat("N =", nrow(agg_data), " p =", p, "\n")
+cat("Nodes:", paste(node_order_cd, collapse = ", "), "\n")
+```
+
+```{r plot-helpers}
+plotAG <- function(amat, title_text = NULL, save_path = NULL, layout_save_path = NULL) {
+  # v2 (2026-09-05): pretty node labels/colors (reuses node_labels/node_colors
+  # from Section 1) instead of raw variable names, plus an optional save_path
+  # so this auto-exports a fresh PNG every time it's knit -- Panel B of
+  # Figure 3 previously had to be hand-exported, which is why it
+  # went stale (still showed the pre-ew6-removal variable set) after the
+  # ew6 exclusion. Knitting through Section 7 now regenerates the PNG
+  # automatically, so it can never drift from the current node set again.
+  #
+  # v3 (2026-09-05): added layout_save_path so the SCM diagram
+  # (07_figure5_scm_hierarchical_v3.R) can share this graph's node layout and
+  # colors instead of hand-tuning qgraph's curve/label parameters by eye --
+  # a real graph-layout algorithm (Rgraphviz's layoutGraph(), used here)
+  # inherently avoids node overlaps for whatever edge set it's given, which
+  # is a lot more reliable than eyeballing curvature by hand. When
+  # layout_save_path is set, the (x, y) position
+  # Rgraphviz computed for every node is written out as a plain CSV that
+  # 07_figure5_scm_hierarchical_v3.R now reads and reuses (matched by node
+  # name, not row order) instead of its own fixed_layout_matrix() coordinates.
+  g   <- as(amat, "graphNEL")
+  nn  <- nodes(g); p <- numNodes(g); ne <- numEdges(g)
+  ah  <- at <- vector("list", ne); ln <- character(ne)
+  sym <- amat
+  sym[sym == 1] <- "odot"; sym[sym == 2] <- "vee"
+  sym[sym == 3] <- "none"; sym[sym == 4] <- "tee"
+  iE <- 0
+  for (i in 1:(p - 1)) for (j in (i + 1):p) {
+    x <- nn[i]; y <- nn[j]
+    if (sym[x, y] != 0) {
+      iE <- iE + 1
+      ah[[iE]] <- sym[x, y]; at[[iE]] <- sym[y, x]
+      ln[[iE]] <- paste0(x, "~", y)
+    }
+  }
+  names(ah) <- names(at) <- ln
+  edgeRenderInfo(g) <- list(arrowhead = ah, arrowtail = at,
+                            lwd = 2.1, col = "#4A4A4A")
+  # label/fontsize/cex are set BEFORE layoutGraph() because layoutGraph uses
+  # them to size each node's bounding box -- they need to be inputs to the
+  # layout step, not just outputs of it.
+  nodeRenderInfo(g) <- list(
+    label    = setNames(node_labels[nn], nn),
+    fontsize = 15,
+    cex      = 1
+  )
+  graph.par(list(nodes = list(cex = 1)))
+  g_laid_out <- Rgraphviz::layoutGraph(g)
+  # FIX 2026-09-05: fill/col/lwd were originally set in the same block above
+  # (before layoutGraph()) and silently did nothing -- the rendered PNG came
+  # out with plain white nodes despite node_colors being passed in.
+  # layoutGraph() resets purely-cosmetic render attributes it doesn't need
+  # for layout (fill isn't a layout input the way label/fontsize are), so
+  # anything color-related has to be (re-)applied to the LAID-OUT graph,
+  # after layoutGraph(), not before it.
+  nodeRenderInfo(g_laid_out) <- list(
+    fill = setNames(node_colors[nn], nn),
+    col  = "#4A4A4A",
+    lwd  = 1.4
+  )
+  if (!is.null(layout_save_path)) {
+    # NOTE 2026-09-05: getNodeXY() only works on the older "Ragraph" objects
+    # returned by Rgraphviz::agopen() -- it errored here ("unable to find an
+    # inherited method ... for signature object = 'graphNEL'") because
+    # layoutGraph()/renderGraph() (the API this function actually uses)
+    # returns a graphNEL with layout info attached via nodeRenderInfo()
+    # instead. That's where the computed (x, y) positions actually live.
+    nri <- nodeRenderInfo(g_laid_out)  # unprefixed, same as the nodeRenderInfo(g) <- ... setter above
+    layout_df <- data.frame(name = names(nri$nodeX), x = unname(nri$nodeX), y = unname(nri$nodeY))
+    dir.create(dirname(layout_save_path), showWarnings = FALSE, recursive = TRUE)
+    write.csv(layout_df, layout_save_path, row.names = FALSE)
+    cat("Wrote node layout (for reuse in the SCM figure) to", layout_save_path, "\n")
+  }
+  render_once <- function() {
+    par(mar = c(1, 1, 6, 1))
+    Rgraphviz::renderGraph(g_laid_out)
+    if (!is.null(title_text))
+      title(main = title_text, cex.main = 1.15, line = 4, font.main = 2)
+  }
+  if (!is.null(save_path)) {
+    dir.create(dirname(save_path), showWarnings = FALSE, recursive = TRUE)
+    grDevices::png(save_path, width = 1500, height = 1500, res = 220, bg = "white")
+    render_once()
+    grDevices::dev.off()
+  }
+  render_once()
+}
+
+plotPC <- function(amat, title_text = NULL) {
+  g  <- as(amat, "graphNEL")
+  nn <- nodes(g); p <- numNodes(g); ne <- numEdges(g)
+  ah <- at <- vector("list", ne); ln <- character(ne)
+  iE <- 0
+  for (i in 1:(p-1)) for (j in (i+1):p) {
+    # Skip if no edge in either direction
+    if (amat[i,j] == 0 && amat[j,i] == 0) next
+    iE <- iE + 1
+    if (amat[i,j] == 1 && amat[j,i] == 1) {
+      # Undirected
+      ah[[iE]] <- "none"; at[[iE]] <- "none"
+    } else if (amat[i,j] == 1 && amat[j,i] == 0) {
+      # i -> j
+      ah[[iE]] <- "vee";  at[[iE]] <- "none"
+    } else {
+      # j -> i
+      ah[[iE]] <- "none"; at[[iE]] <- "vee"
+    }
+    ln[[iE]] <- paste0(nn[i], "~", nn[j])
+  }
+  ah <- ah[seq_len(iE)]; at <- at[seq_len(iE)]; ln <- ln[seq_len(iE)]
+  names(ah) <- names(at) <- ln
+  edgeRenderInfo(g) <- list(arrowhead = ah, arrowtail = at)
+  graph.par(list(nodes = list(cex = 1)))
+  Rgraphviz::renderGraph(Rgraphviz::layoutGraph(g))
+  if (!is.null(title_text))
+    title(main = title_text, cex.main = 1.1, line = 3)
+}
+
+decode_pag_edges <- function(amat, nms) {
+  p <- nrow(amat); rows <- list()
+  for (i in seq_len(p - 1)) for (j in (i + 1):p) {
+    if (amat[i,j] == 0 && amat[j,i] == 0) next
+    m_ij <- switch(as.character(amat[i,j]),"1"="o","2"=">","3"="-","0"="?")
+    m_ji <- switch(as.character(amat[j,i]),"1"="o","2"=">","3"="-","0"="?")
+    lbl <- dplyr::case_when(
+      amat[i,j]==2 & amat[j,i]==3 ~
+        paste0(nms[i]," \u2192 ",nms[j]," (ancestor, no latent)"),
+      amat[j,i]==2 & amat[i,j]==3 ~
+        paste0(nms[j]," \u2192 ",nms[i]," (ancestor, no latent)"),
+      amat[i,j]==2 & amat[j,i]==2 ~ "Bidirected (latent common cause)",
+      amat[i,j]==1 & amat[j,i]==1 ~ "Circle-circle (complete uncertainty)",
+      TRUE ~ "Other"
+    )
+    rows[[length(rows)+1]] <- data.frame(
+      edge = paste0(nms[i]," ",m_ji,"--",m_ij," ",nms[j]),
+      type = lbl, stringsAsFactors = FALSE)
+  }
+  dplyr::bind_rows(rows)
+}
+```
+
+## 7.2 Single-run graphs at `α = 0.05` and `α = 0.01`
+
+```{r fci-05, fig.height=6, fig.width=6}
+fci_05 <- fci(suffStat = suffStat_gauss, indepTest = gaussCItest,
+              alpha = 0.05, labels = node_order_cd, verbose = FALSE)
+plotAG(fci_05@amat, "FCI — PAG (\u03b1 = 0.05)",
+       save_path = "figures/fci_pag_alpha05.png")
+```
+
+```{r fci-01, fig.height=6, fig.width=6}
+fci_01 <- fci(suffStat = suffStat_gauss, indepTest = gaussCItest,
+              alpha = 0.01, labels = node_order_cd, verbose = FALSE)
+plotAG(fci_01@amat, "FCI — PAG (\u03b1 = 0.01)",
+       save_path = "figures/fci_pag_alpha01.png")
+```
+
+The single-run causal graphs should be read conservatively. Their main value is not that they identify one clean causal graph, but that they reveal which parts of the climate-attitude system admit a reasonably stable causal ordering and which parts remain unresolved once latent confounding is allowed. In this dataset, the clearest structure appears at `α = 0.01`, where the FCI PAG recovers a compact backbone centered on `belief_concern`, `harm_present`, `harm_future`, `policy_support`, and `social_norms`.
+
+At the level of formal PAG interpretation, the strongest directional information in the FCI graph is concentrated in that backbone. `belief_concern` carries tail-arrowhead marks toward `harm_present`, `harm_future`, and `policy_support`, which means it is estimated as an ancestor of those nodes in every MAG compatible with the data. `harm_future` is likewise estimated as an ancestor of `harm_present` and `policy_support`, and `harm_present` is estimated as an ancestor of `social_norms`. These are the clearest directional statements supported by the current PAG.
+
+By contrast, several other edges are not cleanly orientable. The links from `belief_concern` and `harm_present` into `trust_science`, `politics`, and `weather_risk_prep` are bidirected in the decoded FCI output, which should be interpreted as compatibility with latent common causes rather than as a methodological failure. In other words, these nodes are clearly part of the same conditional-dependence structure, but their causal ordering is not identified from these data. That is exactly the kind of uncertainty the PAG is meant to display.
+
+PC-stable does not overturn this picture. Its main contribution is that it recovers the same adjacency skeleton at both thresholds, even though it operates under the stronger assumption of causal sufficiency and returns a CPDAG rather than a PAG. So the single-run graphs already suggest an important distinction: the adjacency backbone is relatively stable, whereas the orientation pattern is only partially identified and should be treated as hypothesis-generating.
+
+```{r pc-05, fig.height=6, fig.width=6}
+pc_05 <- pc(suffStat = suffStat_gauss, indepTest = gaussCItest,
+            alpha = 0.05, labels = node_order_cd,
+            skel.method = "stable", verbose = FALSE)
+pc_amat_05 <- as(pc_05@graph, "matrix")
+par(mar = c(1,1,4,1))
+plotPC(pc_amat_05, "PC-stable — CPDAG (\u03b1 = 0.05)")
+```
+
+```{r pc-01, fig.height=6, fig.width=6}
+pc_01 <- pc(suffStat = suffStat_gauss, indepTest = gaussCItest,
+            alpha = 0.01, labels = node_order_cd,
+            skel.method = "stable", verbose = FALSE)
+pc_amat_01 <- as(pc_01@graph, "matrix")
+par(mar = c(1,1,4,1))
+plotPC(pc_amat_01, "PC-stable — CPDAG (\u03b1 = 0.01)")
+```
+
+The FCI PAG at α = 0.01 recovers a compact structure anchored by a **belief–harm–policy backbone**: `belief_concern` carries tail-arrowhead marks toward `harm_present`, `harm_future`, and `policy_support`; `harm_future` is a consistent ancestor of `harm_present` and `policy_support`; `harm_present` is a consistent ancestor of `social_norms`. The edges linking `belief_concern` and `harm_present` to `trust_science`, `politics`, and `weather_risk_prep` are bidirected — latent common causes, not directionalisable from these data. PC-stable recovers the same skeleton at both thresholds.
+
+## 7.3 Bootstrap endpoint-mark proportion matrices
+
+To assess stability more systematically, a nonparametric bootstrap is run separately at `α = 0.05` and `α = 0.01` for both FCI and PC. In each bootstrap resample, the relevant discovery algorithm is re-estimated on the resampled data. For every ordered node pair `(i, j)`, the code records the mark at the `j` endpoint. For FCI, the possible marks are `N` (no edge), `o`, `>`, and `-`. For PC, the possible marks are `N`, `-`, and `>`. Repeating this across 2500 resamples yields, for each alpha level and each algorithm, an empirical proportion distribution over endpoint marks.
+
+These proportions are first displayed separately for `α = 0.05` and `α = 0.01`. The raw bootstrap counts are then pooled across both alpha levels and divided by `2 × 2500 = 5000` to obtain combined endpoint-mark proportions. This pooling step is descriptive: it summarizes what recurs across the two thresholds rather than privileging one of them absolutely. The pooled “stable graph” is then constructed as a dominant-mark summary. In practice, an ordered endpoint is shown only if absence (`N`) is not the dominant pooled mark; among the remaining marks, the dominant non-absence mark is displayed. These pooled stable graphs are therefore best understood as visual summaries of recurring structure, not as fully identified causal solutions.
+
+```{r bootstrap}
+# ── Bootstrap ─────────────────────────────────────────────────────────────────
+library(furrr); library(future)
+n_cores <- max(1L, parallelly::availableCores() - 1L)
+plan(multisession, workers = n_cores)
+
+n_boot    <- 2500
+alphas    <- c("0.05" = 0.05, "0.01" = 0.01)
+fci_marks <- c("N", "o", ">", "-")
+pc_marks  <- c("N", "-", ">")
+
+run_one <- function(b, data, nms, alpha) {
+  p      <- length(nms)
+  idx    <- sample(nrow(data), replace = TRUE)
+  suff_b <- list(C = cor(as.matrix(data[idx, ])), n = length(idx))
+  fci_arr <- array(0L, dim = c(p, p, 4L))
+  pc_arr  <- array(0L, dim = c(p, p, 3L))
+
+  tryCatch({
+    fci_b <- pcalg::fci(
+      suffStat = suff_b, indepTest = pcalg::gaussCItest,
+      alpha = alpha, labels = nms, verbose = FALSE)
+    am <- fci_b@amat
+    for (i in seq_len(p)) for (j in seq_len(p)) {
+      if (i == j) next
+      slot <- am[i, j] + 1L
+      fci_arr[i, j, slot] <- fci_arr[i, j, slot] + 1L
+    }
+  }, error = function(e) NULL)
+
+  tryCatch({
+    pc_b <- pcalg::pc(
+      suffStat = suff_b, indepTest = pcalg::gaussCItest,
+      alpha = alpha, labels = nms,
+      skel.method = "stable", verbose = FALSE)
+    am <- as(pc_b@graph, "matrix")
+    for (i in seq_len(p)) for (j in seq_len(p)) {
+      if (i == j) next
+      slot <- if      (am[i,j]==0L && am[j,i]==0L) 1L
+              else if (am[i,j]==1L && am[j,i]==1L) 2L
+              else if (am[i,j]==1L && am[j,i]==0L) 3L
+              else if (am[i,j]==0L && am[j,i]==1L) 2L
+              else                                  1L
+      pc_arr[i, j, slot] <- pc_arr[i, j, slot] + 1L
+    }
+  }, error = function(e) NULL)
+
+  list(fci = fci_arr, pc = pc_arr)
+}
+
+set.seed(42)
+results <- list()
+for (alph in names(alphas)) {
+  cat("Bootstrap \u03b1 =", alph, "\n")
+  results[[alph]] <- furrr::future_map(
+    seq_len(n_boot), run_one,
+    data  = agg_data, nms = node_order_cd,
+    alpha = alphas[[alph]],
+    .options  = furrr::furrr_options(seed = TRUE),
+    .progress = TRUE)
+}
+plan(sequential)
+
+# ── Accumulate raw counts ─────────────────────────────────────────────────────
+mark_props <- list()
+for (alph in names(alphas)) {
+  fci_c <- array(0L, dim = c(p, p, 4L),
+                 dimnames = list(node_order_cd, node_order_cd, fci_marks))
+  pc_c  <- array(0L, dim = c(p, p, 3L),
+                 dimnames = list(node_order_cd, node_order_cd, pc_marks))
+  for (res in results[[alph]]) {
+    if (is.null(res)) next
+    fci_c <- fci_c + res$fci
+    pc_c  <- pc_c  + res$pc
+  }
+  # Sanity check
+  fci_sums <- apply(fci_c, c(1,2), sum); diag(fci_sums) <- n_boot
+  pc_sums  <- apply(pc_c,  c(1,2), sum); diag(pc_sums)  <- n_boot
+  if (any(abs(fci_sums - n_boot) > 1))
+    warning(sprintf("Alpha %s: FCI cell sums deviate from %d", alph, n_boot))
+  if (any(abs(pc_sums  - n_boot) > 1))
+    warning(sprintf("Alpha %s: PC cell sums deviate from %d",  alph, n_boot))
+
+  # Store raw counts (not proportions) so we can pool later
+  mark_props[[alph]] <- list(
+    fci       = fci_c / n_boot,
+    pc        = pc_c  / n_boot,
+    fci_counts = fci_c,
+    pc_counts  = pc_c
+  )
+}
+
+# ── Combined: pool raw counts across both alphas, divide by 2*n_boot ─────────
+# Each cell proportion = (count at α=0.05 + count at α=0.01) / 2000.
+# A mark scoring 0.80 appeared in ≥80% of all 2000 resamples combined.
+fci_props_combined <- (mark_props[["0.05"]]$fci_counts +
+                        mark_props[["0.01"]]$fci_counts) / (2 * n_boot)
+pc_props_combined  <- (mark_props[["0.05"]]$pc_counts  +
+                        mark_props[["0.01"]]$pc_counts)  / (2 * n_boot)
+
+# Give dimnames
+dimnames(fci_props_combined) <- list(node_order_cd, node_order_cd, fci_marks)
+dimnames(pc_props_combined)  <- list(node_order_cd, node_order_cd, pc_marks)
+
+# Sanity: cells should sum to 1
+fci_cs <- apply(fci_props_combined, c(1,2), sum); diag(fci_cs) <- 1
+pc_cs  <- apply(pc_props_combined,  c(1,2), sum); diag(pc_cs)  <- 1
+if (any(abs(fci_cs - 1) > 0.01)) warning("FCI combined props don't sum to 1")
+if (any(abs(pc_cs  - 1) > 0.01)) warning("PC combined props don't sum to 1")
+
+cat("Bootstrap complete.", n_boot, "resamples per alpha threshold.",
+    "Proportions pooled across both thresholds for summary displays,",
+    "not treated as", 2*n_boot, "independent draws.\n")
+```
+
+```{r plot-mark-fn}
+# ── Plot function ─────────────────────────────────────────────────────────────
+display_label <- function(mark) {
+  dplyr::case_when(mark == "-" ~ "\u2014", TRUE ~ mark)
+}
+
+plot_mark_matrix <- function(props, marks, title, subtitle,
+                              show_legend = FALSE) {   # legend off by default
+
+  base_cols <- c("N"="#aaaaaa","o"="#2e7d8e",">"="#1b5e38","-"="#b5534a")
+  alpha_floor <- 0.15
+  display <- c("N"="N","o"="o",">"=">","-"="\u2014")
+
+  cells <- expand.grid(i=seq_len(p), j=seq_len(p),
+                       stringsAsFactors=FALSE) |>
+    dplyr::filter(i != j) |>
+    dplyr::mutate(row_node=node_order_cd[i], col_node=node_order_cd[j]) |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      dominant = marks[which.max(props[i,j,])],
+      dom_prop = max(props[i,j,]),
+      label = {
+        vals <- props[i,j,]; keep <- vals > 0.04
+        if (any(keep))
+          paste0(display[marks[keep]], ": ",
+                 sprintf("%.2f", vals[keep]), collapse="\n")
+        else ""
+      },
+      fill = adjustcolor(base_cols[dominant],
+                         alpha.f = alpha_floor + (1-alpha_floor)*dom_prop),
+      text_col = dplyr::if_else(dom_prop < 0.30 | dominant=="N",
+                                "#333333","white")
+    ) |> dplyr::ungroup()
+
+  diag_df <- data.frame(node=node_order_cd, label=abbr[node_order_cd])
+
+  legend_df <- data.frame(
+    x     = c(1,2,3,4),
+    label = c("N = absent","o = circle","> = arrowhead","\u2014 = tail"),
+    fill  = unname(base_cols[c("N","o",">","-")])
+  )
+
+  plt <- ggplot() +
+    geom_tile(data=cells, aes(x=col_node,y=row_node,fill=fill),
+              color="white", linewidth=0.8) +
+    scale_fill_identity() +
+    geom_text(data=cells,
+              aes(x=col_node,y=row_node,label=label,color=text_col),
+              size=2.2, fontface="bold", lineheight=1.1) +
+    scale_color_identity() +
+    geom_text(data=diag_df, aes(x=node,y=node,label=label),
+              size=3, color="grey30", fontface="bold") +
+    scale_x_discrete(limits=node_order_cd, labels=abbr[node_order_cd],
+                     position="top") +
+    scale_y_discrete(limits=rev(node_order_cd),
+                     labels=abbr[rev(node_order_cd)]) +
+    labs(title=title, subtitle=subtitle) +
+    theme_minimal(base_size=13) +
+    theme(axis.title=element_blank(),
+          axis.text.x=element_text(face="bold",size=9),
+          axis.text.y=element_text(face="bold",size=9),
+          panel.grid=element_blank(),
+          plot.title=element_text(face="bold",size=11),
+          plot.subtitle=element_text(size=8,color="grey50",lineheight=1.3),
+          plot.margin=margin(5,5,5,5))
+  
+  if (show_legend) {
+    plt <- plt +
+      annotate("tile", x=c(1.5, 3.5, 5.5, 7.5), y=rep(-0.7, 4),
+               width=1.6, height=0.45, fill=legend_df$fill, alpha=0.9) +
+      annotate("text", x=c(1.5, 3.5, 5.5, 7.5), y=rep(-0.7, 4),
+               label=legend_df$label, size=2.6, colour="white", fontface="bold") +
+      annotate("text", x=0.3, y=-0.7, label="Mark\ntype:",
+               hjust=1, size=2.4, colour="grey40") +
+      coord_cartesian(clip="off") +
+      theme(plot.margin=margin(5,5,25,5))
+  }
+  
+  plt
+}
+
+# ── Standalone legend plot ────────────────────────────────────────────────────
+make_legend_plot <- function() {
+  base_cols <- c("N"="#aaaaaa","o"="#2e7d8e",">"="#1b5e38","-"="#b5534a")
+  legend_df <- data.frame(
+    x     = 1:4,
+    label = c("N = absent","o = circle","\u2265 = arrowhead","\u2014 = tail"),
+    fill  = unname(base_cols[c("N","o",">","-")])
+  )
+  ggplot(legend_df, aes(x=x, y=1)) +
+    geom_tile(aes(fill=fill), width=0.9, height=0.7, alpha=0.9) +
+    geom_text(aes(label=label), colour="white", fontface="bold", size=3.2) +
+    scale_fill_identity() +
+    annotate("text", x=0.35, y=1, label="Mark type:",
+             hjust=1, size=3, colour="grey40") +
+    scale_x_continuous(limits=c(0,5)) +
+    theme_void() +
+    theme(plot.margin=margin(2,2,2,2))
+}
+```
+
+::: {.callout-note collapse="true"}
+## Proportion matrices per alpha level
+
+```{r}
+#| label: fci-matrices
+#| fig-height: 6
+#| fig-width: 10
+
+library(patchwork)
+
+p1 <- plot_mark_matrix(mark_props[["0.05"]]$fci, fci_marks,
+  "FCI endpoint-mark proportions — \u03b1 = 0.05",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+p2 <- plot_mark_matrix(mark_props[["0.01"]]$fci, fci_marks,
+  "FCI endpoint-mark proportions — \u03b1 = 0.01",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+(p1 | p2) / make_legend_plot() +
+  patchwork::plot_layout(heights = c(20, 1))
+
+```
+
+```{r}
+#| label: pc-matrices
+#| fig-height: 6
+#| fig-width: 10
+
+p3 <- plot_mark_matrix(mark_props[["0.05"]]$pc, pc_marks,
+  "PC endpoint-mark proportions — \u03b1 = 0.05",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+p4 <- plot_mark_matrix(mark_props[["0.01"]]$pc, pc_marks,
+  "PC endpoint-mark proportions — \u03b1 = 0.01",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+(p3 | p4) / make_legend_plot() +
+  patchwork::plot_layout(heights = c(20, 1))
+```
+:::
+
+```{r}
+fci_non_n <- c("o", ">", "-")
+pc_non_n  <- c("-", ">")
+
+# ── FCI amat ─────────────────────────────────────────────────────────────────
+fci_amat_stable <- matrix(0L, nrow=p, ncol=p,
+                           dimnames=list(node_order_cd, node_order_cd))
+
+for (i in seq_len(p)) {
+  for (j in seq_len(p)) {
+    if (i == j) next
+    # Only draw edge if N is not the dominant mark
+    if (fci_props_combined[i,j,"N"] >= 0.5) next
+
+    dom_mark <- fci_non_n[which.max(fci_props_combined[i, j, fci_non_n])]
+    fci_amat_stable[i, j] <- switch(dom_mark,
+                                     "o" = 1L, ">" = 2L, "-" = 3L, 0L)
+  }
+}
+
+# ── PC amat ──────────────────────────────────────────────────────────────────
+pc_amat_stable <- matrix(0L, nrow=p, ncol=p,
+                          dimnames=list(node_order_cd, node_order_cd))
+
+for (i in seq_len(p)) {
+  for (j in seq_len(p)) {
+    if (i == j) next
+    if (pc_props_combined[i,j,"N"] >= 0.5) next
+
+    dom_mark <- pc_non_n[which.max(pc_props_combined[i, j, pc_non_n])]
+    if (dom_mark == ">") {
+      pc_amat_stable[i, j] <- 1L
+    } else {
+      pc_amat_stable[j, i] <- 1L
+    }
+  }
+}
+
+```
+
+```{r}
+#| label: combined-matrices-fci
+#| fig-height: 7.1
+#| fig-width: 6
+#| layout-ncol: 2
+
+
+plot_mark_matrix(
+  fci_props_combined, fci_marks,
+  "FCI endpoint-mark proportions — pooled across both \u03b1",
+  paste0(n_boot, " resamples per \u03b1, pooled across \u03b1 = 0.05 and \u03b1 = 0.01. ",
+         "Proportions from pooled raw counts. Values \u22640.04 suppressed."),
+  show_legend = TRUE)
+
+par(mar = c(1, 1, 4, 1))
+plotAG(fci_amat_stable,
+       title_text = "FCI stable graph — dominant mark per endpoint")
+```
+
+```{r}
+#| label: combined-matrices-pc
+#| fig-height: 7.1
+#| fig-width: 6
+#| layout-ncol: 2
+
+
+plot_mark_matrix(
+  pc_props_combined, pc_marks,
+  "PC endpoint-mark proportions — pooled across both \u03b1",
+  paste0(n_boot, " resamples per \u03b1, pooled across \u03b1 = 0.05 and \u03b1 = 0.01. ",
+         "Proportions from pooled raw counts. Values \u22640.04 suppressed."),
+  show_legend = TRUE)
+
+
+par(mar = c(1, 1, 4, 1))
+plotPC(pc_amat_stable,
+       title_text = "PC stable graph — dominant mark per endpoint")
+```
+
+**Bootstrap summary.** The bootstrap strengthens the adjacency conclusions more than the orientation conclusions. Across both algorithms and both alpha thresholds, the results support a robust conditional-dependence backbone linking `belief_concern`, the two harm nodes, `policy_support`, `trust_science`, `social_norms`, `politics`, and `weather_risk_prep`. By contrast, endpoint marks are less stable, so most directional conclusions remain provisional. The causal-discovery stage therefore supports a strong statement about which nodes belong to the same robust conditional-dependence structure, but only a narrower statement about how those nodes are ordered. For that reason, the strongest empirical result of this section is the backbone itself, not a fully resolved directed graph.
+
+## 7.4 Extended analysis — downstream climate_behavior
+
+The extended analysis adds `climate_behavior` as a downstream wave-5 outcome. The same overall discovery pipeline is repeated: single-run graphs at both alpha levels, bootstrap endpoint-mark proportions at both alpha levels, pooled proportions across both alpha levels, and a dominant-mark summary graph.
+
+Here, however, the analysis also encodes measurement order as background knowledge so that the wave-5 behavior node is not allowed to act as a cause of the earlier attitude/context nodes. In the FCI analysis this is done through the JCI formulation, treating the earlier attitude/context nodes as context variables relative to `climate_behavior`. In the PC analysis this is done by adding background knowledge only where an undirected edge between an attitude node and `climate_behavior` is present. This means the extended discovery stage does not attempt to infer whether behavior causes earlier attitudes; that possibility is excluded by design because the temporal ordering of measurement already places the attitude/context system upstream of the wave-5 behavior outcome.
+
+```{r ext-setup}
+node_order_ext <- c(node_order_cd, "climate_behavior")
+p_ext          <- length(node_order_ext)
+abbr_ext       <- c(abbr, climate_behavior = "CB")
+
+agg_ext <- df_net_ext[, node_order_ext]
+
+suffStat_ext <- list(
+  C = cor(agg_ext, use = "pairwise.complete.obs"),
+  n = nrow(agg_ext)
+)
+
+# Attitude nodes are context (upstream) variables for FCI-JCI
+context_idx <- which(node_order_ext %in% node_order_cd)
+
+# Background knowledge for PC: every attitude node -> CB
+bg_x <- node_order_cd
+bg_y <- rep("climate_behavior", length(node_order_cd))
+
+cat("Extended nodes:", paste(node_order_ext, collapse=", "), "\n")
+cat("N =", nrow(agg_ext), "\n")
+```
+
+```{r ext-fci-05, fig.height=6.5, fig.width=6.5}
+fci_ext_05 <- fci(
+  suffStat      = suffStat_ext,
+  indepTest     = gaussCItest,
+  alpha         = 0.05,
+  labels        = node_order_ext,
+  contextVars   = context_idx,
+  jci           = "1",
+  selectionBias = FALSE,
+  verbose       = FALSE)
+plotAG(fci_ext_05@amat, "FCI-JCI extended — PAG (\u03b1 = 0.05)",
+       save_path = "figures/fci_pag_ext_alpha05.png")
+# NOTE 2026-09-05: layout_save_path removed here -- the SCM figure
+# (07_figure5_scm_hierarchical_v3.R) no longer reuses this graph's layout;
+# it has its own hand-built layout now (see that script's v6 header). The
+# plotAG() layout_save_path option itself is left in place in case it's
+# useful again later, just not called from here.
+```
+
+```{r ext-fci-01, fig.height=6.5, fig.width=6.5}
+fci_ext_01 <- fci(
+  suffStat      = suffStat_ext,
+  indepTest     = gaussCItest,
+  alpha         = 0.01,
+  labels        = node_order_ext,
+  contextVars   = context_idx,
+  jci           = "1",
+  selectionBias = FALSE,
+  verbose       = FALSE)
+plotAG(fci_ext_01@amat, "FCI-JCI extended — PAG (\u03b1 = 0.01)",
+       save_path = "figures/fci_pag_ext_alpha01.png")
+```
+
+```{r ext-pc-05, fig.height=6.5, fig.width=6.5}
+pc_ext_05      <- pc(suffStat=suffStat_ext, indepTest=gaussCItest,
+                     alpha=0.05, labels=node_order_ext,
+                     skel.method="stable", verbose=FALSE)
+pc_ext_amat_05 <- as(pc_ext_05@graph, "matrix")
+
+# Only orient undirected edges that actually exist between attitude nodes and CB
+bg_pairs_05 <- Filter(function(a)
+  pc_ext_amat_05[a,"climate_behavior"]==1 &&
+  pc_ext_amat_05["climate_behavior",a]==1,
+  node_order_cd)
+
+if (length(bg_pairs_05) > 0) {
+  bg_result <- addBgKnowledge(
+    gInput = pc_ext_05@graph,
+    x      = bg_pairs_05,
+    y      = rep("climate_behavior", length(bg_pairs_05)))
+  pc_ext_amat_05 <- as(bg_result, "matrix")
+}
+
+par(mar=c(1,1,4,1))
+plotPC(pc_ext_amat_05, title_text="PC extended — CPDAG (\u03b1 = 0.05)")
+```
+
+```{r ext-pc-01, fig.height=6.5, fig.width=6.5}
+pc_ext_01      <- pc(suffStat=suffStat_ext, indepTest=gaussCItest,
+                     alpha=0.01, labels=node_order_ext,
+                     skel.method="stable", verbose=FALSE)
+pc_ext_amat_01 <- as(pc_ext_01@graph, "matrix")
+
+bg_pairs_01 <- Filter(function(a)
+  pc_ext_amat_01[a,"climate_behavior"]==1 &&
+  pc_ext_amat_01["climate_behavior",a]==1,
+  node_order_cd)
+
+if (length(bg_pairs_01) > 0) {
+  bg_result <- addBgKnowledge(
+    gInput = pc_ext_01@graph,
+    x      = bg_pairs_01,
+    y      = rep("climate_behavior", length(bg_pairs_01)))
+  pc_ext_amat_01 <- as(bg_result, "matrix")
+}
+
+par(mar=c(1,1,4,1))
+plotPC(pc_ext_amat_01, title_text="PC extended — CPDAG (\u03b1 = 0.01)")
+```
+
+```{r ext-bootstrap}
+library(furrr); library(future)
+n_cores <- max(1L, parallelly::availableCores() - 1L)
+plan(multisession, workers = n_cores)
+
+fci_marks_ext <- c("N","o",">","-")
+pc_marks_ext  <- c("N","-",">")
+
+run_one_ext <- function(b, data, nms, alpha, ctx_idx) {
+  p      <- length(nms)
+  idx    <- sample(nrow(data), replace=TRUE)
+  suff_b <- list(C=cor(as.matrix(data[idx,])), n=length(idx))
+  fci_arr <- array(0L, dim=c(p,p,4L))
+  pc_arr  <- array(0L, dim=c(p,p,3L))
+
+  # ── FCI ──────────────────────────────────────────────────────────────────
+  tryCatch({
+    fci_b <- pcalg::fci(
+      suffStat=suff_b, indepTest=pcalg::gaussCItest,
+      alpha=alpha, labels=nms,
+      contextVars=ctx_idx, jci="1",
+      selectionBias=FALSE, verbose=FALSE)
+    am <- fci_b@amat
+    for (i in seq_len(p)) for (j in seq_len(p)) {
+      if (i==j) next
+      slot <- am[i,j]+1L
+      fci_arr[i,j,slot] <- fci_arr[i,j,slot]+1L
+    }
+  }, error=function(e) NULL)
+  
+  # ── PC + background knowledge ─────────────────────────────────────────────
+  tryCatch({
+    pc_b <- pcalg::pc(
+      suffStat=suff_b, indepTest=pcalg::gaussCItest,
+      alpha=alpha, labels=nms,
+      skel.method="stable", verbose=FALSE)
+    am <- as(pc_b@graph, "matrix")
+    
+    # Only orient undirected edges that actually exist towards CB
+    att_nms <- nms[nms != "climate_behavior"]
+    bg_pairs <- Filter(function(a)
+      am[a,"climate_behavior"]==1 && am["climate_behavior",a]==1,
+      att_nms)
+    
+    if (length(bg_pairs) > 0) {
+      bg_result <- pcalg::addBgKnowledge(
+        gInput = pc_b@graph,
+        x      = bg_pairs,
+        y      = rep("climate_behavior", length(bg_pairs)))
+      am <- as(bg_result, "matrix")
+    }
+    
+    for (i in seq_len(p)) for (j in seq_len(p)) {
+      if (i==j) next
+      slot <- if      (am[i,j]==0L && am[j,i]==0L) 1L
+      else if (am[i,j]==1L && am[j,i]==1L) 2L
+      else if (am[i,j]==1L && am[j,i]==0L) 3L
+      else if (am[i,j]==0L && am[j,i]==1L) 2L
+      else                                  1L
+      pc_arr[i,j,slot] <- pc_arr[i,j,slot]+1L
+    }
+  }, error=function(e) NULL)
+  
+  list(fci=fci_arr, pc=pc_arr)
+}
+
+set.seed(42)
+results_ext <- list()
+for (alph in names(alphas)) {
+  cat("Extended bootstrap \u03b1 =", alph, "\n")
+  results_ext[[alph]] <- furrr::future_map(
+    seq_len(n_boot), run_one_ext,
+    data    = agg_ext,
+    nms     = node_order_ext,
+    alpha   = alphas[[alph]],
+    ctx_idx = context_idx,
+    .options  = furrr::furrr_options(seed=TRUE),
+    .progress = TRUE)
+}
+plan(sequential)
+
+# ── Accumulate ────────────────────────────────────────────────────────────────
+mark_props_ext <- list()
+for (alph in names(alphas)) {
+  fci_c <- array(0L, dim=c(p_ext,p_ext,4L),
+                 dimnames=list(node_order_ext,node_order_ext,fci_marks_ext))
+  pc_c  <- array(0L, dim=c(p_ext,p_ext,3L),
+                 dimnames=list(node_order_ext,node_order_ext,pc_marks_ext))
+  for (res in results_ext[[alph]]) {
+    if (is.null(res)) next
+    fci_c <- fci_c + res$fci
+    pc_c  <- pc_c  + res$pc
+  }
+  mark_props_ext[[alph]] <- list(
+    fci        = fci_c / n_boot,
+    pc         = pc_c  / n_boot,
+    fci_counts = fci_c,
+    pc_counts  = pc_c)
+}
+
+# ── Pool across both alphas ───────────────────────────────────────────────────
+fci_props_ext <- (mark_props_ext[["0.05"]]$fci_counts +
+                   mark_props_ext[["0.01"]]$fci_counts) / (2*n_boot)
+pc_props_ext  <- (mark_props_ext[["0.05"]]$pc_counts  +
+                   mark_props_ext[["0.01"]]$pc_counts)  / (2*n_boot)
+
+dimnames(fci_props_ext) <- list(node_order_ext, node_order_ext, fci_marks_ext)
+dimnames(pc_props_ext)  <- list(node_order_ext, node_order_ext, pc_marks_ext)
+
+# Persist the per-alpha (unpooled) mark proportions alongside the pooled summary.
+# fci_props_ext.rds (pooled) already supports Table 2 / script 18; this additional
+# object lets downstream scripts assess cross-alpha orientation consistency, which
+# the pooled array cannot answer on its own (see r_patches/21_orientation_crossalpha_table.R).
+dir.create("pipeline_outputs", showWarnings = FALSE)
+saveRDS(mark_props_ext, "pipeline_outputs/mark_props_ext_by_alpha.rds")
+
+cat("Extended bootstrap complete.", n_boot,
+    "resamples per alpha threshold, pooled across both for summary displays.\n")
+cat("Per-alpha mark proportions saved to pipeline_outputs/mark_props_ext_by_alpha.rds\n")
+```
+
+```{r ext-plot-fn}
+# Wrapper: swaps global p / node_order_cd / abbr for extended versions
+plot_mark_matrix_ext <- function(props, marks, title, subtitle,
+                                  show_legend=FALSE) {
+  e <- globalenv()
+  old_p   <- get("p",            envir=e)
+  old_nms <- get("node_order_cd", envir=e)
+  old_abb <- get("abbr",         envir=e)
+  assign("p",            p_ext,          envir=e)
+  assign("node_order_cd", node_order_ext, envir=e)
+  assign("abbr",         abbr_ext,       envir=e)
+  on.exit({
+    assign("p",            old_p,   envir=e)
+    assign("node_order_cd", old_nms, envir=e)
+    assign("abbr",         old_abb, envir=e)
+  })
+  plot_mark_matrix(props, marks, title, subtitle, show_legend)
+}
+```
+
+::: {.callout-note collapse="true"}
+## Extended proportion matrices per alpha level
+
+```{r}
+#| label: ext-fci-matrices-detail
+#| fig-height: 7
+#| fig-width: 12
+
+p1e <- plot_mark_matrix_ext(
+  mark_props_ext[["0.05"]]$fci, fci_marks_ext,
+  "FCI extended — \u03b1 = 0.05",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+p2e <- plot_mark_matrix_ext(
+  mark_props_ext[["0.01"]]$fci, fci_marks_ext,
+  "FCI extended — \u03b1 = 0.01",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+(p1e | p2e) / make_legend_plot() +
+  patchwork::plot_layout(heights=c(20,1))
+```
+
+```{r}
+#| label: ext-pc-matrices-detail
+#| fig-height: 7
+#| fig-width: 12
+
+p3e <- plot_mark_matrix_ext(
+  mark_props_ext[["0.05"]]$pc, pc_marks_ext,
+  "PC extended — \u03b1 = 0.05",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+p4e <- plot_mark_matrix_ext(
+  mark_props_ext[["0.01"]]$pc, pc_marks_ext,
+  "PC extended — \u03b1 = 0.01",
+  paste0(n_boot, " resamples. Values \u22640.04 suppressed."))
+
+(p3e | p4e) / make_legend_plot() +
+  patchwork::plot_layout(heights=c(20,1))
+```
+:::
+
+```{r ext-amats}
+fci_non_n_e <- c("o",">","-")
+pc_non_n_e  <- c("-",">")
+
+# ── FCI extended amat ─────────────────────────────────────────────────────────
+fci_amat_ext <- matrix(0L, nrow=p_ext, ncol=p_ext,
+                        dimnames=list(node_order_ext,node_order_ext))
+
+for (i in seq_len(p_ext)) {
+  for (j in seq_len(p_ext)) {
+    if (i==j) next
+    if (fci_props_ext[i,j,"N"] >= 0.5) next
+    dom_mark <- fci_non_n_e[which.max(fci_props_ext[i,j,fci_non_n_e])]
+    fci_amat_ext[i,j] <- switch(dom_mark,"o"=1L,">"=2L,"-"=3L,0L)
+  }
+}
+
+# ── PC extended amat ──────────────────────────────────────────────────────────
+pc_amat_ext <- matrix(0L, nrow=p_ext, ncol=p_ext,
+                       dimnames=list(node_order_ext,node_order_ext))
+
+for (i in seq_len(p_ext-1)) {
+  for (j in (i+1):p_ext) {
+    inc <- ((1-pc_props_ext[i,j,"N"]) + (1-pc_props_ext[j,i,"N"])) / 2
+    if (inc < 0.5) next
+
+    ni <- node_order_ext[i]; nj <- node_order_ext[j]
+
+    # CB always downstream
+    if (nj == "climate_behavior") {
+      pc_amat_ext[i,j] <- 1L; next
+    }
+    if (ni == "climate_behavior") {
+      pc_amat_ext[j,i] <- 1L; next
+    }
+
+    # Attitude-attitude: dominant arrowhead direction wins
+    arr_ij <- pc_props_ext[i,j,">"]
+    arr_ji <- pc_props_ext[j,i,">"]
+    if      (arr_ij > arr_ji + 0.10) { pc_amat_ext[i,j] <- 1L }
+    else if (arr_ji > arr_ij + 0.10) { pc_amat_ext[j,i] <- 1L }
+    else {
+      pc_amat_ext[i,j] <- 1L
+      pc_amat_ext[j,i] <- 1L
+    }
+  }
+}
+```
+
+```{r}
+#| label: ext-combined-fci
+#| fig-height: 8.1
+#| fig-width: 7
+#| layout-ncol: 2
+
+plot_mark_matrix_ext(
+  fci_props_ext, fci_marks_ext,
+  "FCI extended — pooled across both \u03b1",
+  paste0(n_boot, " resamples per \u03b1, pooled across \u03b1 = 0.05 and \u03b1 = 0.01. ",
+         "Values \u22640.04 suppressed."),
+  show_legend=TRUE)
+
+par(mar=c(1,1,4,1))
+plotAG(fci_amat_ext,
+       title_text="FCI extended stable graph")
+```
+
+```{r}
+#| label: ext-combined-pc
+#| fig-height: 8.1
+#| fig-width: 7
+#| layout-ncol: 2
+
+plot_mark_matrix_ext(
+  pc_props_ext, pc_marks_ext,
+  "PC extended — pooled across both \u03b1",
+  paste0(n_boot, " resamples per \u03b1, pooled across \u03b1 = 0.05 and \u03b1 = 0.01. ",
+         "Values \u22640.04 suppressed."),
+  show_legend=TRUE)
+
+par(mar=c(1,1,4,1))
+plotPC(pc_amat_ext,
+       title_text="PC extended stable graph")
+```
+
+**Extended behavior summary.** In the extended analysis, the most robust behavior-adjacent nodes are `harm_present` and `weather_risk_prep`. These edges appear in both FCI and PC and therefore represent the strongest evidence for specific links between the earlier attitude/context system and later behavior. `social_norms` is more tentative: it appears in PC and in broader robustness summaries, but not as consistently in the stricter FCI result. The safest interpretation is therefore that later climate-related behavior is tied most robustly to present-harm salience and weather-risk perception, with `social_norms` remaining a plausible but weaker secondary candidate. Because `social_norms` is defined here by `cvcc4_should`, any possible downstream norm pathway should be interpreted as an **injunctive-norm** pathway, reflecting perceived normative obligation, rather than as evidence about descriptive expectations of what others will do. This pattern is also substantively coherent given that the behavioral composite includes both mitigation-type and more protective/adaptation-like actions.
+
+## 7.5 Theory-augmented working SCM for scenario analysis
+
+The next step does not treat the causal-discovery output as a uniquely identified directed graph. Instead, it constructs a **theory-augmented working structural causal model (SCM)** for later scenario analysis. This working model is built from three ingredients: first, the robust adjacency backbone identified by the FCI and PC analyses; second, bootstrap evidence on endpoint-mark asymmetry from the pooled FCI extended resamples; and third, a small number of explicitly theory-driven orientation decisions where the bootstrap evidence is weak, symmetric, or in tension with substantive expectations. The resulting graph should therefore be interpreted as a modeling scaffold for simulation rather than as the direct output of the discovery algorithms themselves.
+
+Trimming is used only to reduce the graph to a more manageable skeleton for simulation. In the code, trimming is based on the pooled FCI extended bootstrap: edges are retained when the average no-edge proportion across the two endpoints is below `0.30`. One explicit exception is then added manually, namely the `social_norms – climate_behavior` link, even though its stability is weaker than the rest of the retained skeleton. Orientation is then assigned in graded fashion. Some directions are strongly supported by bootstrap asymmetry, some are supported jointly by bootstrap and theory, and a final subset is imposed mainly on theoretical grounds. This distinction matters, because the evidential status of the edges is not uniform.
+
+::: callout-note
+## Trimming and orientation strategy
+
+**Trimming**: retain only edges where the average N-proportion across both endpoints is \< 0.30 in the pooled FCI extended bootstrap.
+
+**Orientation**: for each retained edge, the arrowhead proportion at each endpoint is read from the pooled FCI extended matrix, and the difference between destination and source arrowhead proportions is used as a descriptive measure of directional asymmetry. Larger positive asymmetry is treated as stronger bootstrap support for the stated direction, whereas smaller or conflicting asymmetry indicates that the direction is more assumption-dependent. Final orientation decisions combine this bootstrap evidence with substantive considerations, and the resulting evidential status is documented edge by edge in the orientation table rather than assigned by a fully mechanical cutoff rule.
+
+**`climate_behavior`** is always downstream — background knowledge applied in Section 7.4 prevents it from being oriented as a cause of attitude nodes.
+
+**Sample note.** All path coefficients and residual variances in the working SCM are estimated on the wave-5 subsample (N = 870). Whether these completers differ systematically from the 1,117 participants who did not complete wave 5 is unknown; intervention simulation results should be interpreted with that potential selection bias in mind.
+:::
+
+```{r trimmed-setup}
+# ── Load extended bootstrap objects ──────────────────────────────────────────
+if (!exists("node_order_ext")) {
+  node_order_ext <- c(node_order_cd, "climate_behavior")
+  p_ext          <- length(node_order_ext)
+}
+
+if (!exists("fci_props_ext")) {
+  if (!file.exists("pipeline_outputs/fci_props_ext.rds"))
+    stop("fci_props_ext.rds not found. Re-render Section 7.4 first.")
+  fci_props_ext <- readRDS("pipeline_outputs/fci_props_ext.rds")
+  pc_props_ext  <- readRDS("pipeline_outputs/pc_props_ext.rds")
+  cat("Loaded fci_props_ext from disk.\n")
+} else {
+  cat("fci_props_ext already in environment.\n")
+}
+```
+
+```{r trimmed-filter}
+# ── Step 1: compute average N-proportion for every pair ──────────────────────
+n_pair <- matrix(NA_real_, nrow = p_ext, ncol = p_ext,
+                 dimnames = list(node_order_ext, node_order_ext))
+
+for (i in seq_len(p_ext - 1)) {
+  for (j in (i + 1):p_ext) {
+    avg_n        <- (fci_props_ext[i, j, "N"] + fci_props_ext[j, i, "N"]) / 2
+    n_pair[i, j] <- avg_n
+    n_pair[j, i] <- avg_n
+  }
+}
+
+# ── Step 2: apply N < 0.30 filter ────────────────────────────────────────────
+kept_pairs <- list()
+for (i in seq_len(p_ext - 1)) {
+  for (j in (i + 1):p_ext) {
+    if (is.na(n_pair[i, j])) next
+    if (n_pair[i, j] < 0.30) {
+      kept_pairs[[length(kept_pairs) + 1]] <- data.frame(
+        node_i = node_order_ext[i],
+        node_j = node_order_ext[j],
+        avg_N  = round(n_pair[i, j], 3),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+}
+
+# Add SN-CB manually (N = 0.45, theory exception)
+kept_pairs[[length(kept_pairs) + 1]] <- data.frame(
+  node_i = "social_norms",
+  node_j = "climate_behavior",
+  avg_N  = 0.45,
+  stringsAsFactors = FALSE
+)
+
+kept_df <- dplyr::bind_rows(kept_pairs)
+cat("Retained edges (including SN-CB exception):", nrow(kept_df), "\n\n")
+
+# ── Step 3: print bootstrap arrowhead evidence for each pair ─────────────────
+cat(sprintf("%-34s  arr->j  arr->i  asymm   avg_N\n", "Pair"))
+cat(strrep("-", 70), "\n")
+for (k in seq_len(nrow(kept_df))) {
+  ni    <- kept_df$node_i[k]
+  nj    <- kept_df$node_j[k]
+  i_idx <- which(node_order_ext == ni)
+  j_idx <- which(node_order_ext == nj)
+  a_j   <- round(fci_props_ext[i_idx, j_idx, ">"], 3)
+  a_i   <- round(fci_props_ext[j_idx, i_idx, ">"], 3)
+  cat(sprintf("%-34s  %6.3f  %6.3f  %+.3f  %5.3f\n",
+              paste(ni, "--", nj), a_j, a_i, a_j - a_i, kept_df$avg_N[k]))
+}
+```
+
+```{r trimmed-build}
+# ── Step 4: build oriented adjacency matrix ───────────────────────────────────
+#
+# Orientation decisions — documented edge by edge:
+#
+# NOTE (2026-09-05): the asymm/arr@ numbers transcribed into the comments
+# below were read off the Step 3 table when it was still running on the
+# N=1000-per-alpha bootstrap. n_boot was since bumped to 2500 per alpha
+# (Section 7.3) and the bootstrap was rerun, so fci_props_ext (and the
+# Step 3 table above) now reflect N=2500 -- these specific decimal values
+# are stale and should be re-read off a fresh Step 3 printout before
+# trusting them for anything more precise than "which bucket is this
+# edge in." The bucket assignments themselves are unlikely to change
+# (these are mostly large-margin asymmetries), but don't quote the exact
+# numbers below in the manuscript without checking them again.
+#
+# STRONG BOOTSTRAP (asymmetry > 0.50 — data unambiguous)
+# -------------------------------------------------------
+# HF → HP   asymm +0.79  arr@HP=0.85, arr@HF=0.06
+#   Future harm is upstream of present harm. Directed in attitude-only FCI.
+#   Theoretically: expectations about worsening harm shape perceived current harm.
+#
+# HP → CB   asymm +0.90  arr@CB=0.96, arr@HP=0.06
+#   Present harm drives climate behavior. Strongest CB link in FCI extended.
+#
+# WR → CB   asymm +1.00  arr@CB=1.00, arr@WR=0.00
+#   Weather risk (worry) drives climate behavior. Perfect bootstrap signal.
+#
+# TS → SN   asymm +0.89  arr@SN=0.94, arr@TS=0.05
+#   Trust in science/expert guidance shapes social norms.
+#
+# POL → PS  asymm +0.84  arr@PS=0.89, arr@POL=0.05
+#   Political ideology is upstream of policy support. Unambiguous.
+#
+# BOOTSTRAP + THEORY (asymmetry 0.15-0.50, both agree)
+# -----------------------------------------------------
+# BC → TS   asymm +0.43  arr@TS=0.71, arr@BC=0.28
+#   Believing climate change is happening precedes trust in scientific guidance.
+#   Science-communication literature: belief acceptance → science deference.
+#
+# BC → PS   asymm +0.45  arr@PS=0.50, arr@BC=0.05
+#   Climate belief precedes policy support. Very low absent rate (N=0.05).
+#
+# BC → HF   asymm +0.25  arr@HF=0.72, arr@BC=0.47
+#   General climate belief/concern shapes future harm perceptions.
+#
+# HP → WR   asymm +0.41  arr@WR=0.69, arr@HP=0.28
+#   Perceiving current harm drives weather risk awareness.
+#   PC also supports this direction.
+#
+# BC → HP   asymm +0.18  arr@HP=0.59, arr@BC=0.41
+#   Weakest asymmetry in this group, but direction consistent with theory
+#   (belief/concern shapes harm perception, not the reverse).
+#
+# PS → SN   asymm +0.19  arr@SN=0.39, arr@PS=0.20
+#   Policy support shapes social norms about lower-carbon behavior.
+#
+# HF → TS   asymm +0.29 (p_adjacent=0.657 -- closest to the inclusion floor
+#   of any retained edge; no established theory story yet for why
+#   anticipated future harm would drive trust in expert guidance -- added
+#   on the same mechanical-threshold standard as BC->WR below.)
+#
+# BC → WR   asymm +0.065 (p_adjacent=0.946 -- very robust existence, but
+#   the weakest orientation asymmetry of any retained edge; high arrowhead
+#   mass at BOTH endpoints, a pattern at least as consistent with a shared
+#   latent upstream cause as with a clean direct effect.)
+#
+# THEORY OVER BOOTSTRAP (bootstrap weak or conflicting)
+# -----------------------------------------------------
+# TS → PS   asymm +0.40  arr@PS=0.69, arr@TS=0.29
+#   Bootstrap slightly favours PS→TS by mark logic (arr@TS=0.89 from PS row)
+#   but theory strongly favours TS→PS: deference to scientific expertise is
+#   upstream of specific policy endorsement (Druckman & McGrath 2019).
+#   Decision: TS → PS, noting the conflict.
+#
+# POL → BC  asymm +0.33  arr@POL=0.62, arr@BC=0.29
+#   Politics is an exogenous background variable. Political identity shapes
+#   climate attitudes, not the reverse (Kahan et al. 2012).
+#
+# SN → CB   asymm +0.49  arr@CB=0.55, arr@SN=0.06  N=0.45 (exception)
+#   Retained despite N=0.45. Descriptive norms (perceived social uptake of
+#   low-carbon behavior) are established antecedents of individual behavior
+#   (Cialdini 2003). Arrowhead asymmetry supports direction.
+
+trimmed_nodes <- node_order_ext
+p_tr          <- length(trimmed_nodes)
+
+tr_amat <- matrix(0L, nrow = p_tr, ncol = p_tr,
+                  dimnames = list(trimmed_nodes, trimmed_nodes))
+
+add_edge <- function(amat, from, to) {
+  amat[from, to] <- 2L
+  amat[to, from] <- 3L
+  amat
+}
+
+# Strong bootstrap
+tr_amat <- add_edge(tr_amat, "harm_future",       "harm_present")
+tr_amat <- add_edge(tr_amat, "harm_present",      "climate_behavior")
+tr_amat <- add_edge(tr_amat, "weather_risk_prep", "climate_behavior")
+tr_amat <- add_edge(tr_amat, "trust_science",     "social_norms")
+tr_amat <- add_edge(tr_amat, "politics",          "policy_support")
+
+# Bootstrap + theory
+tr_amat <- add_edge(tr_amat, "belief_concern", "trust_science")
+tr_amat <- add_edge(tr_amat, "belief_concern", "policy_support")
+tr_amat <- add_edge(tr_amat, "belief_concern", "harm_future")
+tr_amat <- add_edge(tr_amat, "harm_present",   "weather_risk_prep")
+tr_amat <- add_edge(tr_amat, "belief_concern", "harm_present")
+tr_amat <- add_edge(tr_amat, "policy_support", "social_norms")
+tr_amat <- add_edge(tr_amat, "harm_future",    "trust_science")
+tr_amat <- add_edge(tr_amat, "belief_concern", "weather_risk_prep")
+
+# Theory over bootstrap
+tr_amat <- add_edge(tr_amat, "trust_science",  "policy_support")
+tr_amat <- add_edge(tr_amat, "politics",       "belief_concern")
+tr_amat <- add_edge(tr_amat, "social_norms",   "climate_behavior")
+
+cat("Total directed edges:", sum(tr_amat == 2L), "\n")
+
+# Topological sort
+remaining  <- trimmed_nodes
+printed    <- character(0)
+topo_order <- character(0)
+
+while (length(remaining) > 0) {
+  for (nd in remaining) {
+    nd_idx  <- which(trimmed_nodes == nd)
+    parents <- trimmed_nodes[sapply(seq_along(trimmed_nodes), function(k) {
+      k != nd_idx &&
+      tr_amat[k, nd_idx] == 2L &&
+      tr_amat[nd_idx, k] == 3L
+    })]
+    if (all(parents %in% printed)) {
+      topo_order <- c(topo_order, nd)
+      printed    <- c(printed, nd)
+      remaining  <- remaining[remaining != nd]
+      break
+    }
+  }
+}
+
+cat("\nDirected edges (topological order):\n")
+for (nd in topo_order) {
+  nd_idx  <- which(trimmed_nodes == nd)
+  parents <- trimmed_nodes[sapply(seq_along(trimmed_nodes), function(k) {
+    k != nd_idx &&
+    tr_amat[k, nd_idx] == 2L &&
+    tr_amat[nd_idx, k] == 3L
+  })]
+  for (pa in parents) {
+    cat(sprintf("  %s -> %s\n", pa, nd))
+  }
+}
+```
+
+```{r trimmed-helpers}
+get_parents_tr <- function(node, amat, nms) {
+  idx <- which(nms == node)
+  nms[sapply(seq_along(nms), function(k) {
+    k != idx &&
+      amat[k, idx] == 2L &&
+      amat[idx, k] == 3L
+  })]
+}
+```
+
+```{r trimmed-orientation-table}
+# recover all directed edges from tr_amat
+edge_df <- purrr::map_dfr(trimmed_nodes, function(to_node) {
+  pa <- get_parents_tr(to_node, tr_amat, trimmed_nodes)
+  if (length(pa) == 0) return(NULL)
+  tibble::tibble(
+    from = as.character(pa),
+    to   = as.character(rep(to_node, length(pa)))
+  )
+})
+
+# pull dimnames once
+rn <- dimnames(fci_props_ext)[[1]]
+cn <- dimnames(fci_props_ext)[[2]]
+mn <- dimnames(fci_props_ext)[[3]]
+
+if (!("N" %in% mn && ">" %in% mn)) {
+  stop("fci_props_ext must have mark dimensions including 'N' and '>'")
+}
+
+# match edge labels to array indices
+edge_stats <- edge_df |>
+  dplyr::mutate(
+    i_from = match(from, rn),
+    i_to   = match(to,   cn)
+  )
+
+# stop early with a readable message if anything does not match
+bad_idx <- edge_stats |>
+  dplyr::filter(is.na(i_from) | is.na(i_to))
+
+if (nrow(bad_idx) > 0) {
+  stop(
+    "These edge labels were not found in fci_props_ext dimnames:\n",
+    paste0(bad_idx$from, " -> ", bad_idx$to, collapse = "\n")
+  )
+}
+
+# compute numerical summaries using numeric indices
+edge_stats <- edge_stats |>
+  dplyr::mutate(
+    avg_N = purrr::map2_dbl(i_from, i_to,
+      ~ (fci_props_ext[.x, .y, "N"] + fci_props_ext[.y, .x, "N"]) / 2),
+    arr_to = purrr::map2_dbl(i_from, i_to,
+      ~ fci_props_ext[.x, .y, ">"]),
+    arr_from = purrr::map2_dbl(i_from, i_to,
+      ~ fci_props_ext[.y, .x, ">"]),
+    asymm = arr_to - arr_from,
+    edge_label = paste0(from, " -> ", to)
+  )
+
+# manual interpretation / basis labels
+edge_class <- tibble::tribble(
+  ~from,               ~to,                 ~Interpretation,                       ~Basis,                                   ~row_group,
+  "weather_risk_prep", "climate_behavior",  "Bootstrap clear",                     "FCI bootstrap",                          "FCI bootstrap — unambiguous",
+  "harm_present",      "climate_behavior",  "Bootstrap clear",                     "FCI bootstrap",                          "FCI bootstrap — unambiguous",
+  "trust_science",     "social_norms",      "Bootstrap clear",                     "FCI bootstrap",                          "FCI bootstrap — unambiguous",
+  "politics",          "policy_support",    "Bootstrap clear",                     "FCI bootstrap",                          "FCI bootstrap — unambiguous",
+  "harm_future",       "harm_present",      "Bootstrap clear",                     "FCI bootstrap",                          "FCI bootstrap — unambiguous",
+
+  "belief_concern",    "harm_future",       "Bootstrap + theory agree",            "Bootstrap + theory",                     "Bootstrap and theory agree",
+  "belief_concern",    "policy_support",    "Bootstrap + theory agree",            "Bootstrap + theory",                     "Bootstrap and theory agree",
+  "belief_concern",    "harm_present",      "Bootstrap + theory agree",            "Bootstrap + theory",                     "Bootstrap and theory agree",
+  "harm_future",       "trust_science",     "Bootstrap + theory agree (existence near floor)", "Bootstrap + theory",                "Bootstrap and theory agree",
+  "belief_concern",    "weather_risk_prep", "Bootstrap + theory agree (weak asymmetry)",        "Bootstrap + theory",                "Bootstrap and theory agree",
+
+  "politics",          "belief_concern",    "Bootstrap favors opposite direction", "Theory (politics exogenous)",            "Theory overrides bootstrap — most assumption-dependent",
+  "belief_concern",    "trust_science",     "Bootstrap favors opposite direction", "Theory (belief precedes trust)",         "Theory overrides bootstrap — most assumption-dependent",
+  "harm_present",      "weather_risk_prep", "Bootstrap favors opposite direction", "Theory (harm drives risk perception)",      "Theory overrides bootstrap — most assumption-dependent",
+  "policy_support",    "social_norms",      "Bootstrap favors opposite direction", "Theory (policy shapes injunctive norm)", "Theory overrides bootstrap — most assumption-dependent",
+  "trust_science",     "policy_support",    "Bootstrap weak / theory emphasized",  "Theory + bootstrap tension",             "Theory overrides bootstrap — most assumption-dependent",
+
+  "social_norms",      "climate_behavior",  "Bootstrap weak; retained by theory",  "Theory exception",                       "Symmetric / weak bootstrap — theory only"
+)
+
+# check exact correspondence between SCM edges and classification table
+missing_class <- dplyr::anti_join(edge_df, edge_class, by = c("from", "to"))
+extra_class   <- dplyr::anti_join(edge_class, edge_df, by = c("from", "to"))
+
+if (nrow(missing_class) > 0) {
+  stop(
+    "These SCM edges are missing from edge_class:\n",
+    paste0(missing_class$from, " -> ", missing_class$to, collapse = "\n")
+  )
+}
+
+if (nrow(extra_class) > 0) {
+  stop(
+    "These edge_class rows are not present in tr_amat:\n",
+    paste0(extra_class$from, " -> ", extra_class$to, collapse = "\n")
+  )
+}
+
+orient_tbl <- edge_stats |>
+  dplyr::left_join(edge_class, by = c("from", "to")) |>
+  dplyr::mutate(
+    Edge      = edge_label,
+    `Avg N`   = round(avg_N, 2),
+    Asymmetry = sprintf("%+.2f", asymm),
+    Decision  = Edge
+  ) |>
+  dplyr::select(
+    Edge, `Avg N`, Asymmetry, Interpretation, Basis, Decision, row_group
+  )
+
+# manuscript row order
+row_order <- c(
+  "weather_risk_prep -> climate_behavior",
+  "harm_present -> climate_behavior",
+  "trust_science -> social_norms",
+  "politics -> policy_support",
+  "harm_future -> harm_present",
+  "belief_concern -> harm_future",
+  "belief_concern -> policy_support",
+  "belief_concern -> harm_present",
+  "harm_future -> trust_science",
+  "belief_concern -> weather_risk_prep",
+  "politics -> belief_concern",
+  "belief_concern -> trust_science",
+  "harm_present -> weather_risk_prep",
+  "policy_support -> social_norms",
+  "trust_science -> policy_support",
+  "social_norms -> climate_behavior"
+)
+
+orient_tbl <- orient_tbl |>
+  dplyr::mutate(Edge = factor(Edge, levels = row_order)) |>
+  dplyr::arrange(Edge)
+
+kbl <- orient_tbl |>
+  dplyr::select(-row_group) |>
+  knitr::kable(
+    caption = paste0(
+      "Orientation decisions for retained edges in the working SCM. ",
+      "Avg N = average pooled no-edge proportion across both endpoints. ",
+      "Asymmetry = pooled arrowhead proportion at the destination minus ",
+      "the pooled arrowhead proportion at the source, computed from the ",
+      "FCI extended bootstrap pooled across both alpha levels."
+    ),
+    digits = 2
+  ) |>
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = TRUE,
+    font_size = 11
+  )
+
+grp  <- orient_tbl$row_group
+idx1 <- which(grp == "FCI bootstrap — unambiguous")
+idx2 <- which(grp == "Bootstrap and theory agree")
+idx3 <- which(grp == "Theory overrides bootstrap — most assumption-dependent")
+idx4 <- which(grp == "Symmetric / weak bootstrap — theory only")
+
+kbl |>
+  kableExtra::pack_rows("FCI bootstrap — unambiguous", min(idx1), max(idx1)) |>
+  kableExtra::pack_rows("Bootstrap and theory agree", min(idx2), max(idx2)) |>
+  kableExtra::pack_rows("Theory overrides bootstrap — most assumption-dependent", min(idx3), max(idx3)) |>
+  kableExtra::pack_rows("Symmetric / weak bootstrap — theory only", min(idx4), max(idx4))
+```
+
+## 7.6 Path estimation within the working SCM
+
+Once the working SCM is specified, path estimation is used for two distinct purposes. First, equation-by-equation standardized linear regressions are fit for each endogenous node as local descriptive diagnostics. These regressions are useful for inspecting parent–child relations one equation at a time, but they do not constitute a single jointly estimated system and, in the present implementation, do not all use the same sample. They are therefore reported only as diagnostic summaries.
+
+Second, the full directed system is estimated simultaneously in `lavaan` as a path model on the extended sample (N = 870) using MLR estimation. This simultaneous `lavaan` fit is the basis used to parameterize the SCM for visualization and scenario analysis: both standardized path coefficients and residual variances in the simulation are taken from this same fitted model. These parameters should be interpreted as conditional on the assumed working SCM. They do not validate the graph and should not be read as identified causal effects independent of the structural assumptions introduced in Section 7.5.
+
+The simultaneous `lavaan` model is best understood as a pragmatic approximation for structured scenario analysis rather than as a near-exact representation of the observed covariance structure. Within that qualification, the estimated paths are still informative about the internal logic of the working model. The strongest coefficients lie on the belief–harm–response axis, especially `belief_concern → harm_future`, `belief_concern → trust_science`, and `harm_future → harm_present`. By contrast, the direct paths into `climate_behavior` are more modest: `harm_present` and `weather_risk_prep` are the strongest, whereas `social_norms → climate_behavior` is smaller and more assumption-dependent. This pattern is consistent with the earlier network and causal-discovery results, which also suggested that later behavior is tied most robustly to present-harm salience and weather-related risk perception.
+
+```{r trimmed-sem-weights}
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+# Attitude-attitude edges: full sample N = 1987
+att_nodes_tr <- trimmed_nodes[trimmed_nodes != "climate_behavior"]
+att_dat_tr   <- df_main     |> dplyr::select(all_of(att_nodes_tr)) |> as.data.frame()
+
+# CB edges: wave-5 subsample N = 870
+ext_dat_tr   <- df_extended |> dplyr::select(all_of(trimmed_nodes)) |> as.data.frame()
+
+# ── Fit one structural equation per non-exogenous node ───────────────────────
+sem_rows <- list()
+
+for (nd in trimmed_nodes) {
+  pa <- get_parents_tr(nd, tr_amat, trimmed_nodes)
+  if (length(pa) == 0) next
+
+  dat_use <- if (nd == "climate_behavior") ext_dat_tr else att_dat_tr
+  n_use   <- nrow(dat_use)
+
+  fit <- tryCatch(
+    lm(as.formula(paste(nd, "~", paste(pa, collapse = " + "))),
+       data = as.data.frame(scale(dat_use))),
+    error = function(e) NULL
+  )
+  if (is.null(fit)) next
+
+  sm    <- summary(fit)
+  coefs <- sm$coefficients
+
+  for (parent in pa) {
+    sem_rows[[length(sem_rows) + 1]] <- data.frame(
+      from  = parent,
+      to    = nd,
+      beta  = round(coefs[parent, "Estimate"],   3),
+      se    = round(coefs[parent, "Std. Error"], 3),
+      t_val = round(coefs[parent, "t value"],    3),
+      p_val = round(coefs[parent, "Pr(>|t|)"],   4),
+      r2    = round(sm$r.squared,                3),
+      n     = n_use,
+      stringsAsFactors = FALSE
+    )
+  }
+}
+
+sem_results <- dplyr::bind_rows(sem_rows) |>
+  tibble::as_tibble() |>
+  dplyr::mutate(
+    sig = dplyr::case_when(
+      p_val < 0.001 ~ "***",
+      p_val < 0.01  ~ "**",
+      p_val < 0.05  ~ "*",
+      TRUE          ~ ""
+    ),
+    basis = dplyr::case_when(
+      paste(from, to) %in% c(
+        "harm_future harm_present",
+        "harm_present climate_behavior",
+        "weather_risk_prep climate_behavior",
+        "trust_science social_norms",
+        "politics policy_support"
+      ) ~ "FCI bootstrap",
+      paste(from, to) %in% c(
+        "trust_science policy_support",
+        "politics belief_concern",
+        "social_norms climate_behavior"
+      ) ~ "Theory",
+      TRUE ~ "Bootstrap + theory"
+    )
+  ) |>
+  dplyr::arrange(factor(to, levels = trimmed_nodes), dplyr::desc(abs(beta)))
+
+cat("Structural equation estimates:\n")
+print(sem_results, n = 30)
+```
+
+```{r trimmed-sem-table}
+sem_results |>
+  dplyr::mutate(edge = paste0(from, " -> ", to)) |>
+  dplyr::select(
+    Edge  = edge,
+    Beta  = beta,
+    SE    = se,
+    t     = t_val,
+    p     = p_val,
+    Sig   = sig,
+    R2    = r2,
+    N     = n,
+    Basis = basis
+  ) |>
+  knitr::kable(
+    caption = paste0(
+      "Equation-by-equation diagnostic estimates from standardized linear regressions ",
+      "of each node on its assigned parents in the working SCM. ",
+      "Beta = standardized regression coefficient from lm(Y ~ pa(Y)) on scaled data. ",
+      "R2 is the equation-level R-squared shared across all edges into the same outcome. ",
+      "These regressions are reported as local descriptive checks only and are not used ",
+      "to parameterize the final simulation model. ",
+      "Attitude-attitude equations use N = 1987; equations involving climate_behavior use N = 870."
+    ),
+    digits = 3
+  ) |>
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = TRUE, font_size = 11
+  ) |>
+  kableExtra::pack_rows("belief_concern equation",
+    min(which(sem_results$to == "belief_concern")),
+    max(which(sem_results$to == "belief_concern"))) |>
+  kableExtra::pack_rows("harm_future equation",
+    min(which(sem_results$to == "harm_future")),
+    max(which(sem_results$to == "harm_future"))) |>
+  kableExtra::pack_rows("harm_present equation",
+    min(which(sem_results$to == "harm_present")),
+    max(which(sem_results$to == "harm_present"))) |>
+  kableExtra::pack_rows("trust_science equation",
+    min(which(sem_results$to == "trust_science")),
+    max(which(sem_results$to == "trust_science"))) |>
+  kableExtra::pack_rows("policy_support equation",
+    min(which(sem_results$to == "policy_support")),
+    max(which(sem_results$to == "policy_support"))) |>
+  kableExtra::pack_rows("social_norms equation",
+    min(which(sem_results$to == "social_norms")),
+    max(which(sem_results$to == "social_norms"))) |>
+  kableExtra::pack_rows("weather_risk_prep equation",
+    min(which(sem_results$to == "weather_risk_prep")),
+    max(which(sem_results$to == "weather_risk_prep"))) |>
+  kableExtra::pack_rows("climate_behavior equation",
+    min(which(sem_results$to == "climate_behavior")),
+    max(which(sem_results$to == "climate_behavior")))
+```
+
+```{r trimmed-lavaan}
+# ── Simultaneous SEM via lavaan ───────────────────────────────────────────────
+library(lavaan)
+
+lav_lines_tr <- c()
+for (nd in trimmed_nodes) {
+  pa <- get_parents_tr(nd, tr_amat, trimmed_nodes)
+  if (length(pa) == 0) next
+  lav_lines_tr <- c(lav_lines_tr,
+    paste0(nd, " ~ ", paste(pa, collapse = " + ")))
+}
+lav_model_tr <- paste(lav_lines_tr, collapse = "\n")
+
+cat("Lavaan model:\n", lav_model_tr, "\n\n")
+
+sem_fit_tr <- lavaan::sem(
+  lav_model_tr,
+  data      = as.data.frame(scale(ext_dat_tr)),
+  estimator = "MLR"
+)
+
+cat("=== Global fit ===\n")
+print(round(lavaan::fitMeasures(sem_fit_tr,
+  c("cfi", "tli", "rmsea", "rmsea.ci.lower",
+    "rmsea.ci.upper", "srmr", "aic", "bic")), 3))
+
+std_tr <- lavaan::standardizedSolution(sem_fit_tr) |>
+  dplyr::filter(op == "~") |>
+  dplyr::select(From = rhs, To = lhs,
+                Beta = est.std, SE = se, Z = z, p = pvalue) |>
+  dplyr::mutate(
+    across(where(is.numeric), ~round(.x, 3)),
+    sig = dplyr::case_when(
+      p < 0.001 ~ "***", p < 0.01 ~ "**",
+      p < 0.05  ~ "*",   TRUE     ~ ""
+    )
+  ) |>
+  dplyr::arrange(factor(To, levels = trimmed_nodes), dplyr::desc(abs(Beta)))
+
+write.csv(std_tr, "pipeline_outputs/std_path_coefficients_16edge.csv", row.names = FALSE)
+
+knitr::kable(
+  std_tr,
+  caption = paste0(
+    "Standardized path coefficients from the simultaneous path model (lavaan, MLR), estimated on the extended sample (N = 870). Fit indices are reported above and suggest that the model is better treated as a working approximation for scenario analysis than as a close-fitting structural representation."
+  )
+) |>
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = TRUE, font_size = 11
+  )
+```
+
+The simultaneous `lavaan` model provides a useful summary of the implied path structure, but its fit is mixed rather than uniformly strong. Relative fit and residual fit are acceptable to good (`CFI = 0.971`, `TLI = 0.952`, `SRMR = 0.048`), whereas the RMSEA is clearly above conventional close-fit benchmarks (`RMSEA = 0.096`, 90% CI `[0.084, 0.109]`). The model is therefore better understood as a pragmatic approximation for structured scenario analysis than as a near-exact representation of the observed covariance structure. This caution is especially important because the simultaneous path model is estimated on the extended wave-5 subsample (`N = 870`), not on the full `N = 1987` attitude sample.
+
+```{r trimmed-qgraph-weighted, fig.height=7, fig.width=7}
+n_tr  <- length(trimmed_nodes)
+W_mat <- matrix(0, nrow = n_tr, ncol = n_tr,
+                dimnames = list(trimmed_nodes, trimmed_nodes))
+
+el_tr <- std_tr |>
+  dplyr::filter(!is.na(Beta), abs(Beta) > 0) |>
+  dplyr::mutate(
+    from_n = match(From, trimmed_nodes),
+    to_n   = match(To,   trimmed_nodes),
+    w      = pmax(abs(Beta), 0.01),
+    label  = sprintf("%.2f", abs(Beta))
+  ) |>
+  dplyr::filter(!is.na(from_n), !is.na(to_n))
+
+for (k in seq_len(nrow(el_tr))) {
+  W_mat[el_tr$from_n[k], el_tr$to_n[k]] <- el_tr$w[k]
+}
+
+elabel_mat <- matrix("", nrow = n_tr, ncol = n_tr)
+for (k in seq_len(nrow(el_tr))) {
+  if (el_tr$w[k] >= 0.27)
+    elabel_mat[el_tr$from_n[k], el_tr$to_n[k]] <- el_tr$label[k]
+}
+
+# ── Edge line types by evidential basis ──────────────────────────────────────
+lty_mat <- matrix(1L, nrow = n_tr, ncol = n_tr,
+                  dimnames = list(trimmed_nodes, trimmed_nodes))
+
+theory_override <- list(
+  c("politics",       "belief_concern"),
+  c("belief_concern", "trust_science"),
+  c("harm_present",   "weather_risk_prep"),
+  c("policy_support", "social_norms")
+)
+
+theory_only <- list(
+  c("social_norms", "climate_behavior")
+)
+
+for (pair in theory_override) {
+  i <- match(pair[1], trimmed_nodes)
+  j <- match(pair[2], trimmed_nodes)
+  lty_mat[i, j] <- 4L
+}
+
+for (pair in theory_only) {
+  i <- match(pair[1], trimmed_nodes)
+  j <- match(pair[2], trimmed_nodes)
+  lty_mat[i, j] <- 3L
+}
+
+edge_idx <- which(W_mat != 0, arr.ind = TRUE)
+lty_vec  <- apply(edge_idx, 1, function(x) lty_mat[x[1], x[2]])
+
+# ── Plot ───────────────────────────────────────────────────────────────────────
+qgraph::qgraph(
+  input            = W_mat,
+  directed         = TRUE,
+  labels           = node_labels[trimmed_nodes],
+  color            = node_colors[trimmed_nodes],
+  edge.color       = "#4A4A4A",
+  edge.labels      = elabel_mat,
+  edge.label.cex   = 0.70,
+  edge.label.color = "#333333",
+  edge.label.bg    = TRUE,
+  lty              = lty_vec,
+  layout           = "spring",
+  repulsion        = 0.9,
+  vsize            = 10,
+  label.cex        = 0.85,
+  label.color      = "black",
+  border.color     = "white",
+  border.width     = 2,
+  asize            = 6,
+  esize            = 10,
+  posCol           = "#4A4A4A",
+  negCol           = "#4A4A4A",
+  title            = "Trimmed directed graph — standardised path coefficients",
+  title.cex        = 0.97,
+  mar              = c(3, 3, 6, 3)
+)
+
+legend(
+  "bottomleft",
+  legend = c(
+    "Bootstrap-supported direction",
+    "Theory overrides bootstrap",
+    "Theory only (weak bootstrap)"
+  ),
+  lty    = c(1, 4, 3),
+  lwd    = 2,
+  col    = "#4A4A4A",
+  bty    = "n",
+  cex    = 0.8
+)
+```
+
+```{r scm-define}
+# ── Structural Causal Model (SCM) ────────────────────────────────────────────
+# The SCM formalises the trimmed directed graph as a set of structural
+# equations with explicit noise terms. Each equation is:
+#
+#   X_i = f_i(pa(X_i)) + ε_i
+#
+# where f_i is linear with lavaan standardised coefficients, and ε_i is
+# Gaussian with SD = sqrt(1 - R²_i), calibrated so that each variable
+# has variance ≈ 1 on the standardised scale.
+#
+# Exogenous variable:
+#   politics ~ N(0, 1)
+#
+# Endogenous variables (in topological order):
+#   belief_concern    = β_pol_bc  * politics + ε_bc
+#   harm_future       = β_bc_hf   * belief_concern + ε_hf
+#   trust_science     = β_bc_ts   * belief_concern + ε_ts
+#   harm_present      = β_hf_hp   * harm_future
+#                     + β_bc_hp   * belief_concern + ε_hp
+#   policy_support    = β_ts_ps   * trust_science
+#                     + β_bc_ps   * belief_concern
+#                     + β_pol_ps  * politics + ε_ps
+#   weather_risk_prep = β_hp_wr   * harm_present + ε_wr
+#   social_norms      = β_ts_sn   * trust_science
+#                     + β_ps_sn   * policy_support + ε_sn
+#   climate_behavior  = β_hp_cb   * harm_present
+#                     + β_wr_cb   * weather_risk_prep
+#                     + β_sn_cb   * social_norms + ε_cb
+#
+# Intervention via do(X = v): replace X's structural equation with X = v,
+# a constant. All downstream nodes are updated; upstream nodes are unchanged.
+
+# ── Path coefficients (from lavaan standardised solution) ─────────────────────
+scm_coefs <- list(
+  pol_bc  = std_tr$Beta[std_tr$From == "politics"          & std_tr$To == "belief_concern"],
+  bc_hf   = std_tr$Beta[std_tr$From == "belief_concern"    & std_tr$To == "harm_future"],
+  bc_ts   = std_tr$Beta[std_tr$From == "belief_concern"    & std_tr$To == "trust_science"],
+  hf_hp   = std_tr$Beta[std_tr$From == "harm_future"       & std_tr$To == "harm_present"],
+  bc_hp   = std_tr$Beta[std_tr$From == "belief_concern"    & std_tr$To == "harm_present"],
+  ts_ps   = std_tr$Beta[std_tr$From == "trust_science"     & std_tr$To == "policy_support"],
+  bc_ps   = std_tr$Beta[std_tr$From == "belief_concern"    & std_tr$To == "policy_support"],
+  pol_ps  = std_tr$Beta[std_tr$From == "politics"          & std_tr$To == "policy_support"],
+  hp_wr   = std_tr$Beta[std_tr$From == "harm_present"      & std_tr$To == "weather_risk_prep"],
+  ts_sn   = std_tr$Beta[std_tr$From == "trust_science"     & std_tr$To == "social_norms"],
+  ps_sn   = std_tr$Beta[std_tr$From == "policy_support"    & std_tr$To == "social_norms"],
+  hp_cb   = std_tr$Beta[std_tr$From == "harm_present"      & std_tr$To == "climate_behavior"],
+  wr_cb   = std_tr$Beta[std_tr$From == "weather_risk_prep" & std_tr$To == "climate_behavior"],
+  sn_cb   = std_tr$Beta[std_tr$From == "social_norms"      & std_tr$To == "climate_behavior"],
+  hf_ts   = std_tr$Beta[std_tr$From == "harm_future"       & std_tr$To == "trust_science"],
+  bc_wr   = std_tr$Beta[std_tr$From == "belief_concern"    & std_tr$To == "weather_risk_prep"]
+)
+
+# Verify all coefficients found
+cat("SCM path coefficients:\n")
+purrr::iwalk(scm_coefs, ~cat(sprintf("  %-10s  %.3f\n", .y, .x)))
+stopifnot(all(sapply(scm_coefs, length) == 1))
+
+# ── Residual SDs from the same lavaan working SCM ─────────────────────────────
+# Use equation-level R² from the simultaneous lavaan model, not from the
+# separate lm() diagnostics, so the SCM is parameterized from one coherent fit.
+
+r2_lav <- lavaan::lavInspect(sem_fit_tr, "rsquare")
+
+# Make sure all endogenous nodes are represented
+print(round(r2_lav, 3))
+
+scm_resid_sd <- c(
+  politics          = 1.000,  # exogenous root node on standardized scale
+  belief_concern    = sqrt(1 - unname(r2_lav["belief_concern"])),
+  harm_future       = sqrt(1 - unname(r2_lav["harm_future"])),
+  trust_science     = sqrt(1 - unname(r2_lav["trust_science"])),
+  harm_present      = sqrt(1 - unname(r2_lav["harm_present"])),
+  policy_support    = sqrt(1 - unname(r2_lav["policy_support"])),
+  weather_risk_prep = sqrt(1 - unname(r2_lav["weather_risk_prep"])),
+  social_norms      = sqrt(1 - unname(r2_lav["social_norms"])),
+  climate_behavior  = sqrt(1 - unname(r2_lav["climate_behavior"]))
+)
+
+cat("Residual SDs from lavaan working SCM:\n")
+print(round(scm_resid_sd, 3))
+
+
+# ── Core SCM simulation function ──────────────────────────────────────────────
+# n:        number of simulated individuals
+# intervene: named list of hard interventions, e.g. list(harm_present = 0.5)
+#            do(X = v) replaces X's structural equation with X = v for all n
+# seed:     for reproducibility
+
+simulate_scm <- function(n = 10000,
+                         intervene = list(),
+                         seed      = 42) {
+  set.seed(seed)
+  p <- scm_coefs
+
+  # Helper: draw noise or zeros for pinned nodes
+  noise <- function(node, n) {
+    if (node %in% names(intervene)) rep(0, n)
+    else rnorm(n, 0, scm_resid_sd[node])
+  }
+
+  # Helper: pin or compute
+  pin <- function(node, expr) {
+    if (node %in% names(intervene)) rep(intervene[[node]], n)
+    else expr
+  }
+
+  # Topological order
+  pol  <- pin("politics",
+              rnorm(n, 0, scm_resid_sd["politics"]))
+
+  bc   <- pin("belief_concern",
+              p$pol_bc * pol + noise("belief_concern", n))
+
+  hf   <- pin("harm_future",
+              p$bc_hf * bc + noise("harm_future", n))
+
+  ts   <- pin("trust_science",
+              p$bc_ts * bc + p$hf_ts * hf + noise("trust_science", n))
+
+  hp   <- pin("harm_present",
+              p$hf_hp * hf + p$bc_hp * bc + noise("harm_present", n))
+
+  ps   <- pin("policy_support",
+              p$ts_ps * ts + p$bc_ps * bc + p$pol_ps * pol +
+                noise("policy_support", n))
+
+  wr   <- pin("weather_risk_prep",
+              p$hp_wr * hp + p$bc_wr * bc + noise("weather_risk_prep", n))
+
+  sn   <- pin("social_norms",
+              p$ts_sn * ts + p$ps_sn * ps + noise("social_norms", n))
+
+  cb   <- pin("climate_behavior",
+              p$hp_cb * hp + p$wr_cb * wr + p$sn_cb * sn +
+                noise("climate_behavior", n))
+
+  tibble::tibble(
+    politics          = pol,
+    belief_concern    = bc,
+    harm_future       = hf,
+    trust_science     = ts,
+    harm_present      = hp,
+    policy_support    = ps,
+    weather_risk_prep = wr,
+    social_norms      = sn,
+    climate_behavior  = cb
+  )
+}
+
+# ── Verify model: simulated marginal SDs should be close to 1 ─────────────────
+obs_baseline <- simulate_scm(n = 50000)
+cat("\nSimulated marginal SDs (should be ≈ 1.0 for standardised model):\n")
+print(round(apply(obs_baseline, 2, sd), 3))
+
+cat("\nSimulated marginal means (should be ≈ 0):\n")
+print(round(apply(obs_baseline, 2, mean), 3))
+
+cat("\nSimulated CB mean:", round(mean(obs_baseline$climate_behavior), 4), "\n")
+cat("Simulated CB SD:  ", round(sd(obs_baseline$climate_behavior),   4), "\n")
+```
+
+------------------------------------------------------------------------
+
+# 8. Intervention Simulation
+
+This section asks two related questions. First, does the directional structure identified in Section 7 actually change the conclusions relative to a naive undirected reading of the GGM? Second, given the directed model, which attitude nodes have the most leverage over downstream climate behavior? The two subsections address these in order: the GGM–SCM comparison motivates why directionality matters, and the SCM intervention ranking shows what it implies for behavior change.
+
+## 8.1 Directed vs undirected: why directionality matters
+
+The GGM and the SCM describe the same system but answer different questions. The GGM is undirected: conditioning on a node updates all connected nodes symmetrically via the multivariate normal conditional expectation, with no notion of upstream or downstream. The SCM is directed: a do-operator intervention on a node only propagates to its descendants, leaving upstream nodes unchanged. The comparison below fixes `belief_concern` to +0.5 SD under both models and shows where the two diverge — including the effect on the primary outcome `climate_behavior`.
+
+```{r ggm-scm-comparison, fig.height=6, fig.width=9}
+library(MASS)
+
+# ── Use extended network which includes climate_behavior ──────────────────────
+sigma_ggm <- cov(df_net_ext)
+ggm_nodes <- extended_nodes
+
+condition_ggm <- function(n, sigma, node_names, fixed = list(), seed = 42) {
+  set.seed(seed)
+  p <- length(node_names)
+
+  if (length(fixed) == 0) {
+    sims <- MASS::mvrnorm(n, mu = rep(0, p), Sigma = sigma)
+    colnames(sims) <- node_names
+    return(as.data.frame(sims))
+  }
+
+  fixed_idx  <- match(names(fixed), node_names)
+  free_idx   <- setdiff(seq_len(p), fixed_idx)
+  x_a        <- unlist(fixed)
+  sigma_bb   <- sigma[free_idx,  free_idx,  drop = FALSE]
+  sigma_ba   <- sigma[free_idx,  fixed_idx, drop = FALSE]
+  sigma_aa   <- sigma[fixed_idx, fixed_idx, drop = FALSE]
+  mu_cond    <- as.vector(sigma_ba %*% solve(sigma_aa) %*% x_a)
+  sigma_cond <- sigma_bb - sigma_ba %*% solve(sigma_aa) %*% t(sigma_ba)
+  free_sims  <- MASS::mvrnorm(n, mu = mu_cond, Sigma = sigma_cond)
+  result     <- matrix(NA, nrow = n, ncol = p)
+  colnames(result) <- node_names
+  result[, free_idx]  <- free_sims
+  result[, fixed_idx] <- matrix(
+    x_a, nrow = n, ncol = length(fixed_idx), byrow = TRUE)
+  as.data.frame(result)
+}
+
+N_COMP     <- 50000
+fixed_node <- list(belief_concern = 0.5)
+
+ggm_base <- condition_ggm(N_COMP, sigma_ggm, ggm_nodes,
+                           fixed = list(),     seed = 42)
+ggm_cond <- condition_ggm(N_COMP, sigma_ggm, ggm_nodes,
+                           fixed = fixed_node, seed = 42)
+scm_base <- simulate_scm(n = N_COMP, intervene = list(),     seed = 42)
+scm_intv <- simulate_scm(n = N_COMP, intervene = fixed_node, seed = 42)
+
+target_nodes <- setdiff(ggm_nodes, "belief_concern")
+
+node_labels_short <- c(
+  harm_present      = "Present Harm",
+  harm_future       = "Future Harm",
+  policy_support    = "Policy Support",
+  trust_science     = "Trust Science",
+  social_norms      = "Social Norms",
+  politics          = "Politics",
+  weather_risk_prep = "Weather Risk",
+  climate_behavior  = "Climate Behavior"
+)
+
+node_level_order <- node_labels_short[c(
+  "politics",
+  "social_norms", 
+  "policy_support",
+  "trust_science",
+  "weather_risk_prep",
+  "harm_present",
+  "harm_future",
+  "climate_behavior"
+)]
+
+compare_df <- tibble::tibble(
+  node  = rep(target_nodes, 2),
+  shift = c(
+    sapply(target_nodes,
+           function(nd) mean(ggm_cond[[nd]]) - mean(ggm_base[[nd]])),
+    sapply(target_nodes,
+           function(nd) mean(scm_intv[[nd]]) - mean(scm_base[[nd]]))
+  ),
+  model = rep(c("GGM (conditioning)", "SCM (do-operator)"),
+              each = length(target_nodes))
+) |>
+  dplyr::mutate(
+    node = factor(node_labels_short[node], levels = node_level_order)
+  )
+
+# ── y-axis label data — built from compare_df so factor levels align ──────────
+ylabel_df <- compare_df |>
+  dplyr::distinct(node)
+
+ggplot2::ggplot(compare_df,
+  ggplot2::aes(x = shift, y = node, colour = model, shape = model)) +
+  # ── Climate Behavior row highlight ───────────────────────────────────────────
+  ggplot2::geom_segment(
+    data = data.frame(
+      node = factor("Climate Behavior", levels = levels(compare_df$node))
+    ),
+    aes(x = 0, xend = 0.60, y = node, yend = node),
+    colour = "#E59866", linewidth = 15, alpha = 0.1,
+    inherit.aes = FALSE) +
+  ggplot2::geom_vline(xintercept = 0, linewidth = 0.4, colour = "grey60") +
+  # ── y labels split by colour to avoid scale_colour_manual conflict ───────────
+  ggplot2::geom_text(
+    data = dplyr::filter(ylabel_df,
+                         !node %in% c("Climate Behavior", "Politics")),
+    aes(x = -0.02, y = node, label = node),
+    hjust = 1, size = 3.5, colour = "black",
+    inherit.aes = FALSE) +
+  ggplot2::geom_text(
+    data = dplyr::filter(ylabel_df, node == "Climate Behavior"),
+    aes(x = -0.02, y = node, label = node),
+    hjust = 1, size = 3.5, colour = "#C06010", fontface = "bold",
+    inherit.aes = FALSE) +
+  ggplot2::geom_text(
+    data = dplyr::filter(ylabel_df, node == "Politics"),
+    aes(x = -0.02, y = node, label = node),
+    hjust = 1, size = 3.5, colour = "grey45", fontface = "bold",
+    inherit.aes = FALSE) +
+  # ── inline annotations ───────────────────────────────────────────────────────
+  ggplot2::geom_text(
+    data = data.frame(
+      node  = factor("Politics", levels = levels(compare_df$node)),
+      shift = 0.01,
+      model = "GGM (conditioning)"
+    ),
+    aes(x = shift, y = node,
+        label = "Upstream — unchanged under do()"),
+    hjust = 0, vjust = -0.8,
+    size = 2.8, colour = "grey40", fontface = "italic",
+    inherit.aes = FALSE) +
+  ggplot2::geom_text(
+    data = data.frame(
+      node  = factor("Climate Behavior", levels = levels(compare_df$node)),
+      shift = 0.01,
+      model = "GGM (conditioning)"
+    ),
+    aes(x = shift, y = node,
+        label = "Primary outcome"),
+    hjust = 0, vjust = -0.8,
+    size = 2.8, colour = "#C06010", fontface = "italic",
+    inherit.aes = FALSE) +
+  ggplot2::geom_point(
+    size = 3.5,
+    position = ggplot2::position_dodge(width = 0.5)) +
+  ggplot2::scale_colour_manual(
+    values = c("GGM (conditioning)" = "#2E86AB",
+               "SCM (do-operator)"  = "#E55934"),
+    name = NULL
+  ) +
+  ggplot2::scale_shape_manual(
+    values = c("GGM (conditioning)" = 16,
+               "SCM (do-operator)"  = 17),
+    name = NULL
+  ) +
+  ggplot2::scale_x_continuous(
+    labels = function(x) sprintf("%.2f", x),
+    limits = c(-0.15, 0.65),
+    breaks = c(0, 0.20, 0.40, 0.60)
+  ) +
+  ggplot2::labs(
+    x        = "Mean shift from baseline (SD units)",
+    y        = NULL,
+    title    = "GGM conditioning vs SCM intervention: do(belief_concern = +0.5 SD)",
+    subtitle = paste0(
+      "GGM updates all connected nodes symmetrically; ",
+      "SCM propagates only to downstream descendants. ",
+      "N = ", scales::comma(N_COMP), " per model."
+    )
+  ) +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(
+    panel.grid.major.y = ggplot2::element_blank(),
+    panel.grid.minor   = ggplot2::element_blank(),
+    legend.position    = "bottom",
+    axis.text.y        = ggplot2::element_blank(),
+    plot.title         = ggplot2::element_text(face = "bold", size = 12),
+    plot.subtitle      = ggplot2::element_text(colour = "grey40", size = 9)
+  )
+```
+
+Three patterns stand out. The most diagnostic is `politics`: under GGM conditioning it shifts by \~0.28 SD because the undirected model sees only that people high in belief/concern tend to be more liberal — a correlation that propagates symmetrically along the edge in both directions. Under the SCM do-operator it does not move at all, because politics is upstream of `belief_concern` in the causal graph and interventions do not propagate backwards. This single row illustrates the core limitation of the undirected model for intervention reasoning: it cannot distinguish correlation from causation, and it cannot respect the direction of influence.
+
+The second pattern involves `weather_risk_prep`, where the GGM gives a noticeably larger shift (\~0.25 SD) than the SCM (\~0.19 SD). In the SCM, weather risk is downstream of `harm_present` rather than directly downstream of `belief_concern`, so the do-operator effect reaches it only through an additional causal step and arrives attenuated. The GGM, being undirected, sees the direct partial correlation between belief_concern and weather risk and updates it more strongly. This gap is a concrete example of how the assumed causal routing changes the implied magnitude of effect even when both models agree that an association exists.
+
+The third pattern concerns the primary outcome. `climate_behavior` shifts by \~0.20 SD under the SCM but \~0.27 SD under GGM conditioning — the GGM gives a larger estimate. This is because the GGM conflates all correlated pathways simultaneously, including associations through `social_norms` and `policy_support` that are present in the data but whose causal links to behavior are weak in the working model. The SCM gives a more conservative estimate by tracing only the specific directed paths, which run primarily through `harm_present` and `weather_risk_prep`. The GGM therefore overestimates the behavioral reach of belief_concern relative to what the directed causal structure implies.
+
+The meaningful disagreements are concentrated exactly where directionality matters most: at upstream boundary nodes, along indirect causal routes, and at the behavioral endpoint.
+
+## 8.2 SCM intervention effects on climate behavior
+
+Taking the directed model seriously, we now simulate the effect on `climate_behavior` of fixing each attitude node to +0.5 SD via the do-operator. Because the GGM comparison in 8.1 showed that directionality matters — both for which nodes move and by how much — these results cannot be read off the GGM edge weights directly. The SCM is needed to propagate effects correctly through the causal chain.
+
+```{r intervention-simulation}
+N_SIM <- 50000
+
+scenarios <- list(
+  baseline                = list(),
+  harm_present            = list(harm_present      = 0.5),
+  belief_concern          = list(belief_concern    = 0.5),
+  weather_risk_prep       = list(weather_risk_prep = 0.5),
+  social_norms            = list(social_norms      = 0.5),
+  trust_science           = list(trust_science     = 0.5),
+  policy_support          = list(policy_support    = 0.5),
+  harm_present_plus_norms = list(harm_present      = 0.5,
+                                 social_norms      = 0.5),
+  belief_plus_harm        = list(belief_concern    = 0.5,
+                                 harm_present      = 0.5),
+  # 2026-09-05 ADDED: the ACTUAL best pair (of 15) and best triple (of 20),
+  # found by exhaustively simulating all 41 possible targets in
+  # r_patches/02_full_orientation_enumeration_v4.R (see
+  # tables/supp_table_all_combo_interventions.csv) -- neither combo above
+  # turns out to be the strongest; they rank #17 and #12 out of 41
+  # respectively. Kept alongside them (not replacing) so the prose below can
+  # show the actual comparison rather than silently swapping numbers.
+  best_pair               = list(belief_concern    = 0.5,
+                                 weather_risk_prep = 0.5),
+  best_triple             = list(harm_present      = 0.5,
+                                 weather_risk_prep = 0.5,
+                                 social_norms      = 0.5)
+)
+
+sim_results <- purrr::imap_dfr(scenarios, function(intv, label) {
+  dat <- simulate_scm(n = N_SIM, intervene = intv, seed = 42)
+  tibble::tibble(
+    scenario = label,
+    cb       = dat$climate_behavior,
+    hp       = dat$harm_present,
+    sn       = dat$social_norms,
+    wr       = dat$weather_risk_prep,
+    bc       = dat$belief_concern,
+    ts       = dat$trust_science,
+    ps       = dat$policy_support
+  )
+})
+
+baseline_mean <- mean(sim_results$cb[sim_results$scenario == "baseline"])
+baseline_sd   <- sd(sim_results$cb[sim_results$scenario == "baseline"])
+
+scenario_summary <- sim_results |>
+  dplyr::group_by(scenario) |>
+  dplyr::summarise(
+    cb_mean = mean(cb),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    ate     = cb_mean - baseline_mean,
+    ate_pct = ate / baseline_sd * 100,
+    group = dplyr::case_when(
+      scenario %in% c("harm_present_plus_norms",
+                      "belief_plus_harm",
+                      "best_pair",
+                      "best_triple")             ~ "Combined",
+      scenario %in% c("harm_present",
+                      "weather_risk_prep")        ~ "Harm pathway",
+      scenario == "belief_concern"               ~ "Belief pathway",
+      scenario == "social_norms"                 ~ "Norms pathway",
+      scenario %in% c("trust_science",
+                      "policy_support")           ~ "Policy / response",
+      TRUE                                       ~ NA_character_
+    ),
+    label = dplyr::case_when(
+      scenario == "harm_present"            ~ "do(Present harm = +0.5 SD)",
+      scenario == "belief_concern"          ~ "do(Belief/concern = +0.5 SD)",
+      scenario == "weather_risk_prep"       ~ "do(Weather risk = +0.5 SD)",
+      scenario == "social_norms"            ~ "do(Social norms = +0.5 SD)",
+      scenario == "trust_science"           ~ "do(Trust science = +0.5 SD)",
+      scenario == "policy_support"          ~ "do(Policy support = +0.5 SD)",
+      scenario == "harm_present_plus_norms" ~ "do(Present harm + Social norms)",
+      scenario == "belief_plus_harm"        ~ "do(Belief/concern + Present harm)",
+      scenario == "best_pair"               ~ "do(Belief/concern + Weather risk) [best pair, of 15]",
+      scenario == "best_triple"             ~ "do(Present harm + Weather risk + Social norms) [best triple, of 20]",
+      TRUE                                  ~ NA_character_
+    )
+  ) |>
+  dplyr::filter(!is.na(group)) |>
+  dplyr::arrange(dplyr::desc(ate))
+
+get_ate <- function(nm) scenario_summary$ate[scenario_summary$scenario == nm]
+get_ate_pct <- function(nm) scenario_summary$ate_pct[scenario_summary$scenario == nm]
+
+cat("Average treatment effects on climate_behavior (SD units):\n")
+print(scenario_summary |>
+  dplyr::select(label, ate, ate_pct) |>
+  dplyr::mutate(across(where(is.numeric), ~round(.x, 3))), n = 20)
+```
+
+```{r intervention-plot-ate, fig.height=5.5, fig.width=9}
+scenario_summary |>
+  dplyr::mutate(
+    label      = forcats::fct_reorder(label, ate),
+    label_text = sprintf("+%.3f SD", ate)
+  ) |>
+  ggplot2::ggplot(ggplot2::aes(x = ate, y = label, fill = group)) +
+  ggplot2::geom_col(width = 0.65) +
+  ggplot2::geom_text(
+    ggplot2::aes(label = label_text, x = ate + 0.003),
+    hjust = 0, size = 3, colour = "grey25"
+  ) +
+  
+  ggplot2::geom_vline(xintercept = 0, linewidth = 0.4, colour = "grey50") +
+  ggplot2::scale_fill_manual(
+    values = c(
+      "Harm pathway"      = "#E55934",
+      "Belief pathway"    = "#2E86AB",
+      "Norms pathway"     = "#9B5DE5",
+      "Policy / response" = "#F7B731",
+      "Combined"          = "#3BB273"
+    ),
+    name = "Intervention type"
+  ) +
+  ggplot2::scale_x_continuous(
+    expand = ggplot2::expansion(mult = c(0, 0.2)),
+    labels = function(x) sprintf("%.2f", x)
+  ) +
+  ggplot2::labs(
+    x        = "Average treatment effect on climate behavior (SD units)",
+    y        = NULL,
+    title    = "Causal effect of do(X = +0.5 SD) on climate behavior",
+    subtitle = paste0(
+      "Model-implied shifts propagated through working SCM ",
+      "(N = ", scales::comma(N_SIM), " simulated individuals). ",
+      "Effects are in standardised units relative to baseline SD."
+    )
+  ) +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(
+    panel.grid.major.y = ggplot2::element_blank(),
+    panel.grid.minor   = ggplot2::element_blank(),
+    legend.position    = "bottom",
+    plot.title         = ggplot2::element_text(face = "bold", size = 12),
+    plot.subtitle      = ggplot2::element_text(colour = "grey40", size = 9)
+  )
+```
+
+The ranking reveals a clear hierarchy of leverage points. The two largest single-node effects come from `harm_present` (`r sprintf("%+.3f", get_ate("harm_present"))` SD, \~`r sprintf("%.0f", get_ate_pct("harm_present"))`% of a baseline SD) and `belief_concern` (`r sprintf("%+.3f", get_ate("belief_concern"))` SD, \~`r sprintf("%.0f", get_ate_pct("belief_concern"))`%), which are nearly identical in magnitude. `belief_concern` achieves this not through a direct path to behavior — there is none — but through a strong indirect chain: belief/concern → harm_future → harm_present → climate_behavior. Because the two nodes share this downstream route, naively combining them is partly redundant: fixing `belief_concern` and `harm_present` together yields only `r sprintf("%+.3f", get_ate("belief_plus_harm"))` SD (\~`r sprintf("%.0f", get_ate_pct("belief_plus_harm"))`%) — less than the sum of their individual effects, and, once every possible combination is checked rather than assuming the two strongest single levers pair best, not even a top-ranked two-node scenario. The same is true of fixing `harm_present` and `social_norms` together (`r sprintf("%+.3f", get_ate("harm_present_plus_norms"))` SD, \~`r sprintf("%.0f", get_ate_pct("harm_present_plus_norms"))`%): a reasonable-looking candidate on its own, but one that a full search shows is outperformed by several other combinations. `weather_risk_prep` has a meaningful but more modest single-node effect (`r sprintf("%+.3f", get_ate("weather_risk_prep"))` SD, \~`r sprintf("%.0f", get_ate_pct("weather_risk_prep"))`%), reflecting its direct path to `climate_behavior` but narrower upstream reach — it is downstream of `harm_present` and cannot be further amplified by fixing belief_concern.
+
+To identify the actual best multi-node scenario rather than assuming it, we exhaustively simulated every possible combination of the six intervenable nodes — all 15 pairs and 20 triples, 41 targets in total, each re-simulated under all eight structural specifications from the orientation-uncertainty analysis in Section 3.4 (full results in Supplementary Table S-combo). The best two-node scenario is `belief_concern` + `weather_risk_prep` (`r sprintf("%+.3f", get_ate("best_pair"))` SD, \~`r sprintf("%.0f", get_ate_pct("best_pair"))`%), and the best three-node scenario — the single strongest target found among all 41 — is `harm_present` + `weather_risk_prep` + `social_norms` (`r sprintf("%+.3f", get_ate("best_triple"))` SD, \~`r sprintf("%.0f", get_ate_pct("best_triple"))`%). The pattern is intuitive in hindsight: `weather_risk_prep`'s own single-node effect is modest, but because it sits on a distinct, non-overlapping route to `climate_behavior`, pairing it with either of the two strongest single levers captures ground that pairing two nodes on the *same* pathway cannot. More generally, the most effective multi-node interventions in this causal structure combine levers from different causal pathways rather than doubling up on the two individually strongest nodes — a distinction only an exhaustive, structure-aware search surfaces.
+
+The most policy-relevant finding is the disconnect between network connectivity and intervention leverage on the response side of the system. `policy_support` (`r sprintf("%+.3f", get_ate("policy_support"))` SD) and `trust_science` (`r sprintf("%+.3f", get_ate("trust_science"))` SD) are strongly connected within the attitude network, but fixing either one alone produces negligible shifts in `climate_behavior`. This is because both nodes sit on the trust/policy/norms branch of the causal graph whose only path to `climate_behavior` runs through `social_norms` with a small coefficient — and even fixing `social_norms` directly yields only `r sprintf("%+.3f", get_ate("social_norms"))` SD. Strong network edges do not automatically translate into behavioral leverage. The SCM makes this distinction visible in a way that the GGM alone cannot.
+
+Results should be interpreted as model-implied scenario shifts under the assumed causal structure. The qualitative ordering of leverage points is more defensible than the precise numerical magnitudes, which depend on the specific path coefficients in the working SCM estimated on the wave-5 subsample (N = 870).
+
+------------------------------------------------------------------------
+
+# 9. Session info
+
+```{r session}
+sessionInfo()
+```

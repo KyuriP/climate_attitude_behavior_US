@@ -1,0 +1,42 @@
+"rank","label","n_nodes","baseline_ate","range_low","range_high"
+1,"Present harm + Weather risk + Social norms",3,0.311,0.286,0.312
+2,"Present harm + Weather risk + Trust in science",3,0.288,0.288,0.29
+3,"Belief/concern + Present harm + Weather risk",3,0.286,0.28,0.29
+4,"Belief/concern + Weather risk + Social norms",3,0.286,0.255,0.286
+5,"Present harm + Weather risk + Policy support",3,0.27,0.245,0.29
+6,"Belief/concern + Present harm + Social norms",3,0.267,0.241,0.268
+7,"Belief/concern + Weather risk + Trust in science",3,0.267,0.257,0.268
+8,"Belief/concern + Weather risk + Policy support",3,0.265,0.255,0.265
+9,"Present harm + Social norms + Policy support",3,0.257,0.237,0.258
+10,"Present harm + Social norms + Trust in science",3,0.257,0.23,0.258
+11,"Belief/concern + Weather risk",2,0.253,0.247,0.266
+12,"Present harm + Social norms",2,0.251,0.234,0.252
+13,"Belief/concern + Present harm + Trust in science",3,0.25,0.243,0.252
+14,"Belief/concern + Present harm + Policy support",3,0.247,0.235,0.248
+15,"Present harm + Weather risk",2,0.247,0.237,0.298
+16,"Present harm + Trust in science + Policy support",3,0.242,0.23,0.243
+17,"Belief/concern + Present harm",2,0.235,0.228,0.252
+18,"Belief/concern + Social norms + Policy support",3,0.235,0.209,0.235
+19,"Belief/concern + Social norms + Trust in science",3,0.234,0.201,0.234
+20,"Belief/concern + Social norms",2,0.229,0.206,0.229
+21,"Present harm + Trust in science",2,0.227,0.227,0.24
+22,"Belief/concern + Trust in science + Policy support",3,0.22,0.201,0.22
+23,"Belief/concern + Trust in science",2,0.21,0.201,0.212
+24,"Present harm + Policy support",2,0.209,0.184,0.24
+25,"Belief/concern + Policy support",2,0.207,0.198,0.213
+26,"Belief/concern",1,0.202,0.196,0.21
+27,"Present harm",1,0.192,0.183,0.238
+28,"Weather risk + Social norms + Trust in science",3,0.155,0.097,0.161
+29,"Weather risk + Social norms + Policy support",3,0.154,0.105,0.16
+30,"Weather risk + Social norms",2,0.147,0.1,0.153
+31,"Weather risk + Trust in science + Policy support",3,0.139,0.097,0.14
+32,"Weather risk + Trust in science",2,0.124,0.097,0.133
+33,"Weather risk + Policy support",2,0.106,0.089,0.108
+34,"Weather risk",1,0.087,0.087,0.105
+35,"Social norms + Trust in science + Policy support",3,0.06,0.007,0.066
+36,"Social norms + Trust in science",2,0.054,0.004,0.059
+37,"Social norms + Policy support",2,0.054,0,0.059
+38,"Social norms",1,0.051,0,0.058
+39,"Trust in science + Policy support",2,0.038,0.007,0.04
+40,"Trust in science",1,0.029,0.004,0.038
+41,"Policy support",1,0.011,-0.007,0.011

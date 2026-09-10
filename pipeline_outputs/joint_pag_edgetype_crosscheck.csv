@@ -1,0 +1,17 @@
+"from","to","in_current_flip_set","max_confound_or_unresolved_pct","max_bidirected_pct","max_circle_circle_pct"
+"social_norms","climate_behavior",TRUE,78.4,78.4,0
+"trust_science","social_norms",FALSE,77.2,76.9,3.1
+"belief_concern","weather_risk_prep",FALSE,74.3,73.5,1.4
+"harm_present","weather_risk_prep",FALSE,68.8,66.7,3.6
+"politics","policy_support",FALSE,65,64.8,1.9
+"weather_risk_prep","climate_behavior",FALSE,62.5,62.5,0
+"politics","belief_concern",TRUE,58.9,57.9,3.9
+"belief_concern","harm_future",FALSE,48.4,44.4,4.4
+"policy_support","social_norms",TRUE,46.8,46.8,0.2
+"harm_present","climate_behavior",FALSE,44.7,44.7,0
+"harm_future","trust_science",FALSE,42.1,39.8,2.3
+"harm_future","harm_present",TRUE,37.7,24.7,13
+"trust_science","policy_support",FALSE,27.2,26.2,3.1
+"belief_concern","trust_science",FALSE,17.5,17,2.9
+"belief_concern","policy_support",FALSE,9.6,8.3,1.3
+"belief_concern","harm_present",FALSE,8.9,8.5,2.1

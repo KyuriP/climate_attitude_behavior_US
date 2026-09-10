@@ -1,0 +1,2 @@
+"comparison","point_diff","boot_mean_diff","ci_lower_95","ci_upper_95","ci_excludes_zero"
+"belief_concern - harm_present",0.0108,0.0111,-0.0156,0.0413,FALSE

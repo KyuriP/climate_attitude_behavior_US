@@ -1,0 +1,14 @@
+"variable","category","p_retained","p_attrited","std_prop_diff","flag_ge_.10"
+"male_cat","female",0.529,0.52,0.017,FALSE
+"male_cat","male",0.471,0.479,-0.015,FALSE
+"male_cat","self_described",0,0.001,-0.042,FALSE
+"race_cat","asian",0.055,0.074,-0.078,FALSE
+"race_cat","black",0.103,0.108,-0.016,FALSE
+"race_cat","islander",0.003,0.002,0.032,FALSE
+"race_cat","multiracial",0.03,0.024,0.035,FALSE
+"race_cat","native",0.008,0.018,-0.087,FALSE
+"race_cat","other",0.038,0.038,-0.003,FALSE
+"race_cat","white",0.762,0.735,0.062,FALSE
+"urban_cat","rural",0.183,0.224,-0.102,TRUE
+"urban_cat","suburban",0.576,0.5,0.152,TRUE
+"urban_cat","urban",0.241,0.276,-0.079,FALSE

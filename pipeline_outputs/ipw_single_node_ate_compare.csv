@@ -1,0 +1,7 @@
+"node","ate_unweighted","ate_ipw_weighted","diff"
+"belief_concern",0.2059,0.2092,0.0033
+"harm_present",0.1951,0.1951,0
+"weather_risk_prep",0.0928,0.093,2e-04
+"social_norms",0.0571,0.0575,4e-04
+"trust_science",0.0342,0.034,-2e-04
+"policy_support",0.0162,0.0168,6e-04

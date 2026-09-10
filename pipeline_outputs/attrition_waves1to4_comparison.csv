@@ -1,0 +1,9 @@
+"variable","mean_retained","mean_attrited","smd","flag_ge_.10"
+"belief_concern",0.699,0.703,-0.015,FALSE
+"harm_present",0.542,0.555,-0.049,FALSE
+"harm_future",0.62,0.623,-0.009,FALSE
+"policy_support",0.613,0.622,-0.031,FALSE
+"trust_science",0.715,0.713,0.006,FALSE
+"social_norms",0.651,0.651,-0.001,FALSE
+"politics",0.471,0.471,0.001,FALSE
+"weather_risk_prep",0.417,0.449,-0.125,TRUE

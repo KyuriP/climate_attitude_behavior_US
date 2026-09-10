@@ -1,0 +1,17 @@
+"from","to","asymmetry_pooled","pooled_positive","asym_a05","dom_pattern_a05","clean_a05","asym_a01","dom_pattern_a01","clean_a01","same_sign","proposed_status","status_changes"
+"politics","belief_concern",-0.238,FALSE,-0.312,"> @source / > @dest",FALSE,-0.384,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",FALSE
+"harm_future","harm_present",0.526,TRUE,-0.108,"> @source / - @dest",FALSE,0.261,"> @source / > @dest",FALSE,FALSE,"unresolved -> theory-completed (proposed)",TRUE
+"belief_concern","harm_present",0.373,TRUE,0.474,"- @source / > @dest",TRUE,0.147,"- @source / > @dest",TRUE,TRUE,"data-supported (proposed)",FALSE
+"belief_concern","harm_future",0.488,TRUE,0.226,"> @source / > @dest",FALSE,0.087,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",TRUE
+"trust_science","policy_support",0.232,TRUE,0.372,"> @source / > @dest",FALSE,0.176,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",TRUE
+"belief_concern","policy_support",0.43,TRUE,0.592,"- @source / > @dest",TRUE,0.416,"- @source / > @dest",TRUE,TRUE,"data-supported (proposed)",FALSE
+"politics","policy_support",0.147,TRUE,0.283,"> @source / > @dest",FALSE,0.321,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",TRUE
+"belief_concern","trust_science",0.228,TRUE,0.104,"> @source / > @dest",FALSE,0.194,"- @source / > @dest",TRUE,TRUE,"unresolved -> theory-completed (proposed)",TRUE
+"harm_future","trust_science",0.209,TRUE,0.293,"> @source / > @dest",FALSE,0.273,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",TRUE
+"trust_science","social_norms",-0.002,FALSE,0.2,"> @source / > @dest",FALSE,0.166,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",FALSE
+"policy_support","social_norms",-0.035,FALSE,-0.3,"> @source / > @dest",FALSE,-0.346,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",FALSE
+"harm_present","weather_risk_prep",-0.212,FALSE,0.036,"> @source / > @dest",FALSE,0.096,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",FALSE
+"belief_concern","weather_risk_prep",-0.023,FALSE,0.02,"> @source / > @dest",FALSE,0.076,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",FALSE
+"harm_present","climate_behavior",0.374,TRUE,0.547,"- @source / > @dest",TRUE,0.458,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",TRUE
+"weather_risk_prep","climate_behavior",0.543,TRUE,0.347,"> @source / > @dest",FALSE,0.256,"> @source / > @dest",FALSE,TRUE,"unresolved -> theory-completed (proposed)",TRUE
+"social_norms","climate_behavior",0.408,TRUE,0,"> @source / > @dest",FALSE,0,"> @source / > @dest",FALSE,FALSE,"unresolved -> theory-completed (proposed)",TRUE
