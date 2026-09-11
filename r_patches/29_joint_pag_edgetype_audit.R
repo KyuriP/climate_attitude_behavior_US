@@ -117,14 +117,19 @@ set.seed(42)  # same seed as the .qmd's ext-bootstrap chunk, for continuity
 p_ext <- length(node_order_ext)
 
 # The 16 retained edges, in the SAME (from, to) direction as base_edges in
-# r_patches/02_full_orientation_enumeration_v4.R / the working SCM -- this
+# clean_pipeline/05_scm_intervention_helpers.R / the working SCM -- this
 # is just a reference list for the final summary table (which edges to
 # report on, and in which direction to label "from_to" vs "to_from"). The
 # audit below actually computes all p*(p-1)/2 pairs, not just these 16, so
 # nothing here restricts what the bootstrap itself estimates.
+# belief_concern->politics and social_norms->policy_support updated
+# 2026-09-11 to track base_edges after the orientation-rule reversal (see
+# analysis_decisions_log.md Section 34) -- r_patches/02 (referenced by the
+# old comment here) still holds the pre-reversal direction and is stale/
+# deliberately unmaintained, so this file now points at 05 instead.
 retained_edges <- tibble::tribble(
   ~from,               ~to,
-  "politics",          "belief_concern",
+  "belief_concern",    "politics",
   "belief_concern",    "harm_future",
   "belief_concern",    "harm_present",
   "harm_future",       "harm_present",
@@ -133,7 +138,7 @@ retained_edges <- tibble::tribble(
   "belief_concern",    "policy_support",
   "trust_science",     "policy_support",
   "politics",          "policy_support",
-  "policy_support",    "social_norms",
+  "social_norms",      "policy_support",
   "trust_science",     "social_norms",
   "harm_present",      "weather_risk_prep",
   "belief_concern",    "weather_risk_prep",
@@ -287,8 +292,12 @@ print(as.data.frame(joint_summary), row.names = FALSE)
 # circle-circle), no threshold, no TRUE/FALSE verdict. Computed on a local
 # copy so the written primary CSV (joint_summary) carries no derived
 # columns at all. --------------------------------------------------------
-current_flip_set <- c("politics->belief_concern", "policy_support->social_norms",
+current_flip_set <- c("belief_concern->weather_risk_prep", "harm_present->weather_risk_prep",
                        "social_norms->climate_behavior", "harm_future->harm_present")
+# updated 2026-09-11: out with politics->belief_concern / policy_support->
+# social_norms (now reversed, data-aligned, no longer uncertain), in with
+# the two weather_risk_prep edges -- see 05_scm_intervention_helpers.R and
+# analysis_decisions_log.md Section 34.
 
 cross_check <- joint_summary |>
   dplyr::mutate(

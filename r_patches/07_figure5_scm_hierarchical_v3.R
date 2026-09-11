@@ -20,10 +20,11 @@
 # two edges (belief_concern->weather_risk_prep, harm_future->trust_science)
 # got added to the skeleton after adding a second predictor to those nodes in
 # the lavaan model - coefficients below are from that refit (N=870, MLR).
-# global fit for the 16-edge model: CFI=.979, TLI=.962, RMSEA=.086
-# [.074,.100], SRMR=.039 (slightly better than the old 14-edge fit) -- NEEDS
-# A NEW FIT NUMBER once belief_concern->politics / social_norms->
-# policy_support are refit (see below), this one is now stale.
+# global fit for the 16-edge model, ORIGINAL edges: CFI=.979, TLI=.962,
+# RMSEA=.086 [.074,.100], SRMR=.039. After the 2026-09-11 reversal of
+# politics/belief_concern and policy_support/social_norms (see below and
+# analysis_decisions_log.md Section 34): CFI=.978, TLI=.959, RMSEA=.089,
+# SRMR=.046 -- essentially unchanged, no fit degradation.
 #
 # UPDATED 2026-09-11, two separate changes:
 #  (1) belief_concern->politics and social_norms->policy_support now follow
@@ -84,7 +85,7 @@ scm_layout_matrix <- function(node_order) {
 # table; last two are the refit values for the two newly-added edges.
 BETA_TR <- tibble::tribble(
   ~from,                ~to,                   ~beta,
-  "belief_concern",     "politics",             NA_real_,  # TODO: refit (reversed from politics->belief_concern 2026-09-11), paste real coefficient
+  "belief_concern",     "politics",             .530,  # refit 2026-09-11 (N=870, MLR); politics ~ belief_concern, single predictor -- see analysis_decisions_log.md Section 34
   "belief_concern",     "harm_future",          .856,
   "belief_concern",     "harm_present",         .291,
   "harm_future",        "harm_present",         .636,
@@ -93,7 +94,7 @@ BETA_TR <- tibble::tribble(
   "politics",           "policy_support",       .113,
   "trust_science",      "policy_support",       .491,
   "trust_science",      "social_norms",         .460,
-  "social_norms",       "policy_support",       NA_real_,  # TODO: refit (reversed from policy_support->social_norms 2026-09-11), paste real coefficient
+  "social_norms",       "policy_support",       .135,  # refit 2026-09-11 (N=870, MLR); policy_support ~ belief_concern + trust_science + politics + social_norms
   "harm_present",       "weather_risk_prep",    .426,  # was .520, dropped once belief_concern added as 2nd predictor
   "harm_present",       "climate_behavior",     .311,
   "weather_risk_prep",  "climate_behavior",     .186,

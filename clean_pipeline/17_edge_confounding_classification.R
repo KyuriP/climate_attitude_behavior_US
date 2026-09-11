@@ -77,11 +77,13 @@ cat("\nWrote", file.path(OUTPUT_DIR, "tables", "scm_edge_confounding_classificat
 # so this catches drift in EITHER direction if the audit data or the
 # hardcoded list ever gets out of sync.
 confound_candidates_in_15 <- data.frame(
-  from = c("belief_concern", "politics", "policy_support", "trust_science",
+  from = c("belief_concern", "politics", "social_norms", "trust_science",
            "harm_present", "belief_concern", "social_norms", "weather_risk_prep"),
-  to   = c("harm_future", "policy_support", "social_norms", "social_norms",
+  to   = c("harm_future", "policy_support", "policy_support", "social_norms",
            "weather_risk_prep", "weather_risk_prep", "climate_behavior", "climate_behavior")
-)
+)  # social_norms->policy_support direction updated 2026-09-11 to track 15's
+   # (from,to) fix after base_edges reversal -- see analysis_decisions_log.md
+   # Section 34/35.
 key <- function(df) sort(paste(df$from, df$to, sep = "->"))
 bidirected_here <- classified[classified$label == "bidirected_dominant", ]
 if (!identical(key(confound_candidates_in_15), key(bidirected_here))) {

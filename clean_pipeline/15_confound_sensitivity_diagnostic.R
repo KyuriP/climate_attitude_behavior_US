@@ -24,11 +24,17 @@ TABLES_DIR <- file.path(OUTPUT_DIR, "tables")
 dir.create(TABLES_DIR, showWarnings = FALSE, recursive = TRUE)
 
 # ---- the 8 edges that were bidirected-plurality at BOTH alpha levels ------
+# UPDATED 2026-09-11: policy_support/social_norms direction flipped to match
+# base_edges in 05 (social_norms->policy_support now, not policy_support->
+# social_norms) -- this list is matched against base_edges by exact from/to
+# in drop_edges() below, so it has to track base_edges's current direction or
+# that edge silently fails to drop (the directed path AND the covariance
+# term would both end up in the model instead of one replacing the other).
 confound_candidates <- tibble::tribble(
   ~edge_label,                            ~from,               ~to,
   "belief_concern -> harm_future",        "belief_concern",    "harm_future",
   "politics -> policy_support",           "politics",          "policy_support",
-  "policy_support -> social_norms",       "policy_support",    "social_norms",
+  "social_norms -> policy_support",       "social_norms",      "policy_support",
   "trust_science -> social_norms",        "trust_science",     "social_norms",
   "harm_present -> weather_risk_prep",    "harm_present",      "weather_risk_prep",
   "belief_concern -> weather_risk_prep",  "belief_concern",    "weather_risk_prep",
@@ -39,11 +45,13 @@ stopifnot(nrow(confound_candidates) == 8)
 
 # note: two nodes lose ALL their edges in the all-8-together spec, not just
 # one:
-#  - social_norms: both incoming edges (policy_support->, trust_science->)
-#    AND its one outgoing edge (->climate_behavior) are all in this list.
-#  - weather_risk_prep: same story -- both incoming (harm_present->,
-#    belief_concern->) and its one outgoing edge (->climate_behavior) are
-#    all in this list.
+#  - social_norms: its one incoming edge (trust_science->) AND both outgoing
+#    edges (->policy_support, ->climate_behavior) are all in this list --
+#    same conclusion as before the direction flip, just 1-in/2-out now
+#    instead of 2-in/1-out.
+#  - weather_risk_prep: both incoming (harm_present->, belief_concern->) and
+#    its one outgoing edge (->climate_behavior) are all in this list,
+#    unaffected by the direction flip above.
 # both end up fully disconnected from the mean-propagation graph in that one
 # spec -- exogenous, mean 0, and incapable of reaching climate_behavior
 # through any ~ path. their single-node ates there are exactly 0 by
