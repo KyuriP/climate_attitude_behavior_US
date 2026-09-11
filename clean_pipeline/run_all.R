@@ -95,10 +95,21 @@ cat("\nFroze", length(top_level_frozen), "top-level output files and",
 # mean-propagation baseline AND 09's participant-bootstrap point estimate
 # agree to 4 decimals, and 09's bootstrapped CI (.1832-.2278 / .1613-.2288)
 # matches 09's own original sanity-check comment, which nobody had touched.
+# UPDATED 2026-09-11 after the politics/belief_concern and policy_support/
+# social_norms edge reversal (see analysis_decisions_log.md Section 34/35) --
+# these replace the pre-reversal 2026-09-08 values, which are now stale.
+# Cross-validated two independent ways on the post-reversal model: 07's
+# exact mean-propagation combo_0 output and 09's participant-bootstrap point
+# estimate agree to 4+ decimals for all 8 nodes (see chat/log). Note
+# politics drops from .1109 to exactly 0 -- a real, expected consequence of
+# the reversal: politics is no longer upstream of belief_concern, and its
+# one remaining outgoing edge (politics -> policy_support) dead-ends at
+# policy_support, which itself has no outgoing edges in this 16-edge SCM.
 expected_baseline <- c(
-  belief_concern = 0.2059, harm_present = 0.1951, harm_future = 0.1322,
-  weather_risk_prep = 0.0928, politics = 0.1109, social_norms = 0.0571,
-  trust_science = 0.0342, policy_support = 0.0162
+  belief_concern = 0.201272438461644, harm_present = 0.186965335962417,
+  harm_future = 0.129295277380915, weather_risk_prep = 0.0930759991784261,
+  politics = 0, social_norms = 0.0633652634284836,
+  trust_science = 0.0436997792836055, policy_support = 0
 )
 
 baseline_8node_path <- file.path(OUTPUT_DIR, "tables", "orientation_enumeration_ate_deterministic_8node.csv")

@@ -105,5 +105,8 @@ write.csv(triple_rank_table, file.path(OUTPUT_DIR, "intervention_bootstrap_tripl
 saveRDS(boot_ate, file.path(OUTPUT_DIR, "intervention_bootstrap_ate_matrix.rds"))
 cat("\nWrote intervention_bootstrap_ci.csv, _pair_rank1_freq.csv, _triple_rank1_freq.csv,",
     "and the full boot_ate matrix to", OUTPUT_DIR, "\n")
-cat("(belief_concern CI should read ~.183-.228, present harm ~.161-.229 -- matching",
-    "the manuscript's Results section, before trusting anything else here.)\n")
+cat("(belief_concern CI should read ~.177-.223, present harm ~.149-.222 -- matching",
+    "the manuscript's Results section, before trusting anything else here. UPDATED",
+    "2026-09-11 after the politics/belief_concern and policy_support/social_norms",
+    "reversal -- the old .183-.228/.161-.229 numbers are pre-reversal and stale,",
+    "see analysis_decisions_log.md Section 34/35.)\n")

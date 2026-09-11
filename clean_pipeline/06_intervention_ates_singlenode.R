@@ -63,7 +63,9 @@ write.csv(det_results, file.path(TABLES_DIR, "orientation_enumeration_ate_determ
 cat("\nWrote", file.path(TABLES_DIR, "orientation_uncertainty_band_full_deterministic.csv"), "and",
     file.path(TABLES_DIR, "orientation_enumeration_ate_deterministic.csv"), "\n")
 cat("(Belief/concern and present harm should be the two largest baseline ATEs,",
-    "~.206 and ~.195, CIs ~.183-.228 / ~.161-.229 -- matching the manuscript's",
-    "Results section. A stale 14-edge run previously gave .202/.216 here;",
-    "a fresh run_all.R run on the current 16-edge model reproduces .206/.195",
-    "exactly, matching 09's participant-bootstrap CI.\n")
+    "~.201 and ~.187, CIs ~.177-.223 / ~.149-.222 -- matching the manuscript's",
+    "Results section. UPDATED 2026-09-11 after the politics/belief_concern and",
+    "policy_support/social_norms reversal (see analysis_decisions_log.md Section",
+    "34/35) -- these replace the pre-reversal .206/.195 and .183-.228/.161-.229",
+    "numbers, which are now stale. A fresh run_all.R run on the current 16-edge",
+    "model reproduces .201/.187 exactly, matching 09's participant-bootstrap CI.\n")
