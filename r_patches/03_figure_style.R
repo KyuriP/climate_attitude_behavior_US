@@ -208,6 +208,10 @@ FIG_DIMS_MM <- list(
   fig2 = c(width = 147, height = 147),
   fig3 = c(width = 147, height = 147),
   fig4 = c(width = 180, height = 105),
+  # square and noticeably bigger than fig4 -- these are 8x8 stability
+  # matrices with two-line cell labels, fig4's 180x105 landscape ratio was
+  # too squat for that and made every cell cramped.
+  fig_stability = c(width = 160, height = 160),
   fig5 = c(width = 180, height = 115),
   fig6 = c(width = 150, height = 100),
   fig7 = c(width = 160, height = 105),

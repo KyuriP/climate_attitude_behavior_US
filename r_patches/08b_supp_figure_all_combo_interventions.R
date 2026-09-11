@@ -114,8 +114,8 @@ fig_supp_combo <- ggplot(plot_df, aes(y = label)) +
   # ("range across a" then cut off), since axis titles don't wrap. Moved to
   # a caption instead, which DOES wrap.
   labs(caption = paste0(
-    "Diamond = baseline structure. Segment = range across all 16 structural\n",
-    "specifications (see Figure 4)."
+    "Diamond = baseline structure. Segment = range across the 12 acyclic\n",
+    "directional specifications (see Figure 4)."
   )) +
   theme_pub +
   theme(

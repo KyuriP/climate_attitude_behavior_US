@@ -1105,7 +1105,7 @@ cat("Extended (+ behavior) dataset: N =", nrow(df_extended), "\n")
 **Final data structure**
 
 | Dataset | N | Source | Purpose |
-|----------------|---------------:|----------------------|-------------------|
+|-----------------|----------------:|---------------------|------------------|
 | `df_main` | `r nrow(df_main)` | Person-level averages of retained repeated-attitude items | Main belief-network and causal-discovery analyses |
 | `df_extended` | `r nrow(df_extended)` | `df_main` plus wave-5 `climate_behavior` | Extended downstream behavior analysis |
 
@@ -1580,7 +1580,7 @@ Both algorithms are run at `α = 0.05` and `α = 0.01`. The stricter threshold i
 A **PAG** from FCI allows for latent common causes. Its endpoint marks distinguish stronger from weaker orientation statements:
 
 | Mark pair | Interpretation |
-|-----------------------|-------------------------------------------------|
+|-----------------------|------------------------------------------------|
 | Tail — Arrowhead (`X → Y`) | `X` is an ancestor of `Y`; no latent common cause is needed for that edge |
 | Arrowhead — Arrowhead (`X ↔ Y`) | Compatible with latent common cause |
 | Circle — Arrowhead (`X ○→ Y`) | `Y` is not an ancestor of `X`, but the status of `X` remains uncertain |

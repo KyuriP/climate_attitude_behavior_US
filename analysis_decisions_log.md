@@ -2771,3 +2771,76 @@ parenthesis/brace/bracket/quote parity only).
 stated next step, once baseline + 12-acyclic directional + confounding sensitivity
 are all finished -- confounding sensitivity finished as of Section 42), and the
 Figure 3/Table 2 regeneration + caption rewrite discussed in chat just before this.
+
+## Section 44 (2026-09-11): Full-PDF QC pass on the compiled 49-page manuscript -- main text is post-refit, but the entire S6-S13 Supplementary chain is still pre-refit (systemic inconsistency, not yet fixed)
+
+Kyuri uploaded a fully compiled, renumbered 49-page PDF ("Climate_attitude.pdf")
+and asked whether it was meticulous. Read the whole thing page-by-page (main text
+Sections 1-5 + References + Supplementary S1-S15). Verdict: the front half
+(Sections 1-4, Figures 1-4, Tables 1-3) correctly reflects the 2026-09-11
+belief_concern<->politics / social_norms<->policy_support edge-direction reversal
+(Figure 3's coefficient table, Table 2's data-supported/varied split, and the
+Section 3.3 fit numbers CFI=.978/TLI=.959/RMSEA=.089/SRMR=.046 all match the real
+post-refit BETA_TR and log Section 35). But essentially the entire Supplementary
+Materials from S6 onward is still running on the OLD pre-reversal model and
+directly contradicts the main text in several places:
+
+1. **Table S9** (p.32): still lists "Politics -> Belief/concern .530" and
+   "Policy support -> Social norms .284" -- the exact two errors flagged earlier
+   this session for the main-text draft, fixed there (Figure 3) but never fixed
+   here.
+2. **Fit stats directly under Table S9** (p.32): "CFI=.979, TLI=.962, RMSEA=.086,
+   90% CI [.074,.100], SRMR=.039" -- the OLD pre-reversal numbers, contradicting
+   Section 3.3's CFI=.978/TLI=.959/RMSEA=.089/SRMR=.046 just 22 pages earlier.
+3. **S6 equations (1)-(8)** (p.31-32): eq(1) B=beta_PB*P+eps_B and eq(5)/(6) both
+   structurally encode politics->belief_concern and policy_support->social_norms
+   (the OLD direction), not the reversed direction the main text now uses.
+4. **S9 "Belief/concern x political orientation interaction"** (p.35-36): still
+   present in full. Per Section 38, Kyuri had already decided to delete this
+   section entirely -- deletion not yet done.
+5. **S8 "Observational conditioning vs. structural intervention"** (p.35):
+   explicitly argues political orientation doesn't move under
+   do(belief_concern=0.5) "because politics is upstream of belief/concern in the
+   working SCM" -- false under the corrected model, where politics is now
+   *downstream* of belief/concern (beta=.530). The whole comparison in this
+   section needs rerunning against the corrected model.
+6. **S10 "Directional-completion sensitivity analysis"** (pp.36-38): defines the
+   four varied/uncertain edges as PB (politics->belief/concern), PS (policy
+   support->social norms), SC, HP -- explicitly says "belief/concern -> trust
+   science (BT) and present harm -> weather risk (HW) are held fixed... Only PB,
+   PS, SC, and HP are varied." This is the OLD flip-candidate set. The main text
+   (Section 2.4, Table 2) now uses a *different* four-edge set: belief/concern->
+   weather risk, present harm->weather risk, social norms->climate behavior,
+   future harm->present harm. Tables S12 and S13 were therefore computed by
+   varying the wrong two edges (PB, PS instead of the two weather-risk edges).
+7. **Table S12 "Political orientation" row** (p.38): primary effect .111, CI
+   [.094,.127] -- flatly contradicts Table 3 in the main text (p.15), which
+   reports Political orientation's Delta-Y = .000 for the identical intervention,
+   under the corrected model (politics has no outgoing path to behavior once it's
+   downstream of belief/concern).
+8. **Table S13 / surrounding text** (pp.37-39): caption still reads "Model fit for
+   all 16 acyclic, converged structural-orientation specifications" and body text
+   says "All 16 combinations were acyclic and converged successfully" --
+   contradicts S11 (the new cyclic-feedback section, added this session, sitting
+   two paragraphs later on the same page) which correctly says 12 acyclic + 4
+   cyclic. This is the exact stale-text issue flagged to Kyuri last turn; it
+   wasn't corrected when S11 was pasted in.
+9. **Tables S7/S8 (joint-endpoint bootstrap, p.30) and S15/single-run PAG table**
+   (p.43): row label "Politics, Belief/concern" uses the OLD pair order. Table
+   S7/S8's own note says "The order X,Y follows the orientation used in the
+   working SCM," which is no longer true for this pair (working SCM now has
+   Belief/concern -> Politics) -- lower priority than 1-8 since it's raw bootstrap
+   data, but worth relabeling (swap X->Y / X<-Y columns) for consistency with the
+   stated convention.
+
+**Not yet reported to Kyuri as of this log entry -- about to be sent in chat.**
+This is a "verify before calling it done" finding, not a fix -- no R execution
+available, so none of Tables S9/S12/S13, equations S6, or the S8/S9 sections can
+be regenerated here. Kyuri needs to re-pull the corrected structural-equation SCM
+output and behavior-conditioning comparison from her own fitted model objects and
+regenerate S6, S8, S9 (delete), S10 (fix edge set + recompute S12/S13), matching
+what Sections 2-4 of the main text already correctly show.
+
+**S11 (feedback extension) itself is fine** -- matches the verbatim text drafted
+and logged in Section 43, correctly describes 12 acyclic + 4 cyclic, and is
+internally consistent with the main text's Section 2.4/3.4 wording.

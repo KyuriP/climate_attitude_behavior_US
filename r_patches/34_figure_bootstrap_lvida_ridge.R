@@ -353,7 +353,7 @@ panelA <- ggplot() +
   scale_x_continuous(limits = c(x_lo, x_hi), breaks = x_breaks,
                       expand = expansion(mult = c(0, .01))) +
   labs(x = X_LAB, y = NULL, title = "Working SCM",
-       subtitle = "Baseline and 15 alternative orientations") +
+       subtitle = "Baseline + 11 alternative acyclic specifications") +
   theme_pub +
   theme(
     axis.text.y = element_text(size = 9.2),
