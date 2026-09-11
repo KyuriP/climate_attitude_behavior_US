@@ -49,7 +49,13 @@ scripts_in_order <- c(
   "08_intervention_ates_combo.R",
   "09_intervention_bootstrap_ci.R",
   "10_orientation_enumeration_fit.R",
-  "11_interaction_moderation.R",
+  # "11_interaction_moderation.R" -- TEMPORARILY EXCLUDED 2026-09-11. Its
+  # edge_abbrev guard now fails loudly (correctly) because Part D's shift-
+  # intervention design assumed politics was upstream of belief_concern,
+  # which the 2026-09-11 reversal inverted -- needs a real methodology
+  # decision (see analysis_decisions_log.md Section 35/chat), not a
+  # mechanical fix, so it's pulled from the automated run rather than left
+  # to crash it. Run it separately once Part D is resolved, or re-add here.
   "12_wave5_attrition_check.R",
   "13_ipw_attrition_sensitivity.R",
   "14_behavior_outcome_sensitivity.R"
