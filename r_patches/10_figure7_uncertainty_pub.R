@@ -4,24 +4,33 @@
 # Merged main-text figure: for each candidate intervention node, shows (1)
 # the model-implied effect on climate_behavior under the baseline working
 # SCM (combo_0), labeled directly with its value, and (2) how that effect
-# moves across the other 15 acyclic, converged alternative orientations of
-# the four genuinely uncertain edges (politics->belief_concern,
-# policy_support->social_norms, social_norms->climate_behavior,
-# harm_future->harm_present). This absorbs both the old intervention barplot
-# and the old separate uncertainty-range chart into one figure. (The "7" in
-# the filename is a leftover from when only 3 edges were flippable, 2^3=8
-# specs, 7 alternatives; the 4th flip edge (harm_future<->harm_present) was
-# added later in r_patches/02_full_orientation_enumeration_v4.R, making it
-# 16 specs / 15 alternatives -- the plotted data was always correct either
-# way, since it just filters on scenario != "combo_0" rather than
-# hardcoding a count.)
+# moves across the other acyclic, converged alternative orientations of
+# the four genuinely uncertain edges. UPDATED 2026-09-11: the flip set is
+# now belief_concern->weather_risk_prep, harm_present->weather_risk_prep,
+# social_norms->climate_behavior, harm_future->harm_present (politics/
+# belief_concern and policy_support/social_norms are no longer flip
+# candidates -- their asymmetry turned out large, just pointing the other
+# way, so they're now fixed, correctly-oriented base edges instead -- see
+# clean_pipeline/05_scm_intervention_helpers.R and analysis_decisions_log.md
+# Section 34). This also means only 12 of the 16 orientation combinations
+# are acyclic (11 non-baseline alternatives, not 15) -- putting both of
+# weather_risk_prep's parent edges in the flip set makes 4 combinations
+# structurally cyclic regardless of the other two edges' state (see
+# clean_pipeline/07_intervention_ates_8node.R's header for the exact
+# mechanism). This absorbs both the old intervention barplot and the old
+# separate uncertainty-range chart into one figure. (The "7" in the
+# filename is a leftover from when only 3 edges were flippable, 2^3=8
+# specs, 7 alternatives; the plotted data has always been correct
+# regardless of how many alternatives survive, since it just filters on
+# scenario != "combo_0" rather than hardcoding a count -- true again now.)
 #
-# Uses a plain vertical jitter of the 15 alternative-orientation points per
+# Uses a plain vertical jitter of the alternative-orientation points per
 # node rather than a smoothed density -- several other encodings were tried
 # (beeswarm, KDE hump, binned histogram, capped-bandwidth half-density hump)
-# but on reflection the jitter is the more honest picture: 15 discrete
-# points is not enough to support any smoothed density without implying a
-# continuous distribution that isn't there. 10_figure7_uncertainty_pub_jitter.R
+# but on reflection the jitter is the more honest picture: a handful of
+# discrete points (11 as of 2026-09-11, previously 15) is not enough to
+# support any smoothed density without implying a continuous distribution
+# that isn't there. 10_figure7_uncertainty_pub_jitter.R
 # carries the same reasoning for the side-by-side comparison it was built
 # for; that file's plotting code is now this script's canonical code
 # (output filename unchanged, so no manuscript-side references need to
@@ -35,8 +44,11 @@
 #
 # Covers all 8 non-outcome nodes in the working SCM, using
 # tables/orientation_enumeration_ate_deterministic_8node.csv from
-# r_patches/32_deterministic_8node_ates.R (see that script's header for why
-# harm_future and politics never had single-node ATEs computed before now).
+# clean_pipeline/07_intervention_ates_8node.R (the maintained, run_all.R-
+# sourced version of the same logic originally in
+# r_patches/32_deterministic_8node_ates.R, which is now stale/superseded --
+# see that script's header for why harm_future and politics never had
+# single-node ATEs computed before now, still true of the current script).
 # harm_future is added as an ordinary row -- it's a belief construct like
 # present harm, "do(harm_future=0.5)" reads the same way as "do(harm_present=
 # 0.5)". politics is NOT an ordinary row: it isn't an actionable intervention
@@ -59,9 +71,11 @@
 #
 # Design notes -- alternative-orientation encoding
 # -------------------------------------------------
-# Each node has exactly 15 alternative-orientation values (the non-baseline
-# structural specifications), a complete enumeration rather than a sample.
-# Encoding: a plain vertical jitter of the 15 real points (blue, semi-
+# Each node has exactly 11 alternative-orientation values as of 2026-09-11
+# (was 15 before the flip-set change made 4 of the 16 combinations
+# structurally cyclic -- see header above), the non-baseline structural
+# specifications, a complete enumeration rather than a sample.
+# Encoding: a plain vertical jitter of the real points (blue, semi-
 # transparent, no shape beyond the point itself -- no smoothing, no implied
 # density). The baseline specification is marked separately with a rust
 # diamond and its own "+X.XXX SD" label -- this is the number reported in
@@ -146,11 +160,12 @@ fig7 <- ggplot() +
     data=alternative_df,
     aes(x=ate_climate_behavior,y=node_label,shape=kind,fill=kind,colour=kind),
     size=2.6, stroke=0, alpha=.3,
-    # height bumped .09 -> .16: the 15 alternative points per row were
-    # sitting too close together at .09 to read as separated jitter rather
-    # than a smear; .16 still leaves clear separation from the adjacent
-    # node's row (rows are 1 unit apart, so .16 is under a fifth of that gap
-    # on either side).
+    # height bumped .09 -> .16: the alternative points per row (15 at the
+    # time, 11 as of 2026-09-11) were sitting too close together at .09 to
+    # read as separated jitter rather than a smear; .16 still leaves clear
+    # separation from the adjacent node's row (rows are 1 unit apart, so
+    # .16 is under a fifth of that gap on either side) -- still true, if
+    # anything more comfortably so, with fewer points.
     position=position_jitter(height=.16,width=0.006,seed=20260830)
   ) +
   geom_point(

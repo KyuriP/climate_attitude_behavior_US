@@ -2170,3 +2170,44 @@ Committed as `d75a542`: the 07/15/17/29 fixes plus the regenerated
 unmodified and unrun.
 
 Not yet touched, per standing instruction: `main2.tex`.
+
+## Section 36: cyclic orientation combinations stay excluded (12 of 16 valid); propagated the "15 alternatives" staleness to Figure 4's script; flagged run_all.R's locked baseline numbers as due for an update
+
+Decision (Kyuri, in chat): keep the 4 structurally-cyclic combinations (combo_1/5/9/13,
+see Section 35 addendum below / chat) excluded from every downstream table and figure,
+exactly as `is_acyclic()` already does. This is standard practice for this kind of
+orientation-sensitivity enumeration, not a selective exclusion needing justification
+beyond "these aren't valid SCMs" -- a graph with a directed cycle can't be fit as a
+recursive path model in the first place, so there's no ATE to report for it. All
+reported ranges/figures are based on the 12 valid (acyclic, converged) combinations
+out of 16 possible.
+
+**Propagated to the one other place that had a matching hardcoded assumption**:
+`r_patches/10_figure7_uncertainty_pub.R` (the live Figure 4 script -- confirmed current
+via file date and its own header referencing the deterministic-8node CSV that
+`clean_pipeline/07_intervention_ates_8node.R` writes; the sibling `_v2`/`_hump`/
+`_jitter`/`_violin` files in the same directory are earlier exploratory variants, not
+the one in use). Its plotting logic was already robust (filters `scenario !=
+"combo_0"` generically, no hardcoded row count), so no functional change was needed --
+but its header comments claimed "15 alternative orientations" and named the OLD
+4-edge flip set (politics->belief_concern etc.), which would have quietly misdescribed
+the figure to anyone reading the script later. Updated to the correct count (11
+alternatives, 12 total valid combos) and the current flip set, with a pointer to
+`clean_pipeline/07_intervention_ates_8node.R`'s header for the exact cyclic-combo
+mechanism instead of repeating it.
+
+**Flagged, not yet fixed** (needs a fresh run, not a guess): `clean_pipeline/run_all.R`'s
+own `expected_baseline` vector (a locked snapshot of the 8 single-node baseline ATEs
+from 2026-09-08, used as a reference-run sanity check) predates the edge reversal and
+will not match the new model -- Kyuri's own already-completed `06` run confirms this
+for the 6 nodes it covers (e.g. policy_support locked=.0162, new=0 exactly; trust_science
+locked=.0342, new=.0437; social_norms locked=.0571, new=.0634). This means the next
+`run_all.R` execution will correctly print "REFERENCE RUN MISMATCH" -- that's the guard
+doing its job, not a bug, and not something to silence. Once Kyuri runs `run_all.R`
+fresh (restart R first, per its own header instructions) and gets a clean end-to-end
+pass, `expected_baseline` should be updated to that run's real combo_0 values for all
+8 nodes (need harm_future/politics from a successful `07` run, which requires this
+session's `07_intervention_ates_8node.R` fix -- not yet confirmed run by Kyuri as of
+this entry).
+
+Not yet touched, per standing instruction: `main2.tex`.
