@@ -2211,3 +2211,61 @@ session's `07_intervention_ates_8node.R` fix -- not yet confirmed run by Kyuri a
 this entry).
 
 Not yet touched, per standing instruction: `main2.tex`.
+
+## Section 37: cyclic combinations stay a clean exclusion, not a separate analysis -- decision finalized, adopted Methods/Supplement framing recorded
+
+Resolved (Kyuri, relaying a colleague's review of Section 36's cyclic-combo question):
+we do NOT fold the 4 structurally-cyclic orientation combinations into the same
+sensitivity analysis as the 12 acyclic ones, and we do NOT pursue a feedback/
+equilibrium-SEM treatment of them for this paper. Two reasons, both already true of
+the existing implementation, now made explicit for Methods: (1) the working SCM's
+intervention calculation (`scm_mean_propagate()`, topological forward propagation)
+assumes a recursive/acyclic structure -- a cyclic completion isn't a variant of the
+same calculation, it's a calculation that isn't defined; (2) FCI itself represents
+causal structure under an acyclic-graph framework, so a completion implying a directed
+feedback cycle is outside the causal model class the discovery stage is answering
+questions about, not just computationally inconvenient.
+
+**Adopted framing, to go into Methods** (colleague's wording, verbatim): "We considered
+all 2^4=16 combinations of the four directionally uncertain relationships. Twelve
+combinations produced acyclic graphs and were retained for the directional-sensitivity
+analysis. Four produced directed cycles and were excluded because both the working SCM
+and the causal structures represented by FCI assume an acyclic causal system. Each of
+the 12 retained specifications was refitted and the intervention analysis was repeated."
+
+**Adopted framing, Supplement**: "The four excluded specifications were not treated as
+failed models. They implied directed feedback cycles and therefore fell outside the
+recursive SCM used for intervention analysis and the acyclic causal-graph framework
+assumed by FCI." Plus a small supplementary table listing which four combinations
+generated cycles, for transparency -- **no new script needed for this**:
+`clean_pipeline/10_orientation_enumeration_fit.R` already writes one row per combo,
+including the 4 excluded ones, tagged `status="cyclic_skipped"` with their exact
+flipped-edge labels (`orientation_enumeration_fit.csv`) -- just filter to those 4 rows.
+The copy of that file currently on disk (2026-09-09) predates the reversal and still
+shows all 16 as "ok" with the old flip labels; needs a rerun of `10` post-reversal
+before those 4 rows reflect the current model.
+
+**Why all 4 excluded combos share one root cause, not four independent ones** (worth a
+sentence in the Supplement rather than leaving it looking like 4 unrelated failures):
+all four have `belief_concern -> weather_risk_prep` flipped while `harm_present ->
+weather_risk_prep` stays unflipped -- combined with the fixed (non-flippable)
+`belief_concern -> harm_present` edge, this always closes the 3-cycle `belief_concern
+-> harm_present -> weather_risk_prep -> belief_concern`. The other two flip candidates
+(`social_norms <-> climate_behavior`, `harm_future <-> harm_present`) vary freely
+across the four excluded combos without affecting cyclicity -- confirmed against
+Kyuri's real run (combo_1/5/9/13 exactly, matching this structural account bit-for-bit).
+
+**Explicitly NOT pursued for this paper, logged for the record as a future-paper
+direction**: a linear feedback treatment (X = BX + eps, equilibrium X = (I-B)^{-1}eps
+if stable) was discussed as technically possible but requires, at minimum: the cyclic
+equations be statistically identified (an instrument or covariance constraint per loop
+variable), a unique and dynamically stable equilibrium (checked via the loop's path-
+coefficient product having |product| < 1 -- worked through informally in chat using
+raw correlations as a quick proxy, not yet done as a rigorous check), and a
+substantive argument that an equilibrium interpretation is appropriate for these
+attitude constructs. That's a second causal model class, not four more rows on the
+current table -- explicitly out of scope here per Kyuri's colleague's review, noted as
+a natural fit for future work given other feedback-systems interests.
+
+Not yet touched, per standing instruction: `main2.tex` (the Methods/Supplement text
+above is ready to paste in whenever Kyuri does that pass).
