@@ -2656,3 +2656,118 @@ Remaining open items, unchanged from Section 38/39: Figure 3/Table 2 regeneratio
 and manuscript prose (last in the update order, `main2.tex` untouched per standing
 instruction), and the pairs/triples decision for the cyclic feedback extension
 (Section 40).
+
+## Section 43 (2026-09-11): Cyclic feedback extension FROZEN -- no pairs/triples, adopted write-up text, new Supp. figure script
+
+**Decision, final**: the cyclic feedback extension (Sections 39/40) is frozen as-is.
+No pairs/triples for the cyclic cases -- the extension's purpose was to check
+whether excluding the cyclic completions was hiding a qualitatively different
+intervention story, and it wasn't: nothing changes sign, nothing blows up, five of
+eight single-node targets are essentially unchanged. Weather risk's ~22-23%
+amplification is worth reporting but does not clear the bar for opening a 63-target
+(single/pair/triple) analysis on top of it. This closes the open question from
+Section 40.
+
+**Section numbering**: do NOT hard-code this as "Supplementary Section S15" anywhere
+-- Supplementary Section S9 (the belief x politics interaction) is being deleted
+(Section 38), which shifts every later section's number. Use `\label{supp:feedback}`
+only until final numbering is settled during the manuscript-prose pass. Fixed the one
+place this had already been hard-coded (`clean_pipeline/19_cyclic_feedback_
+equilibrium.R`'s header comment, which said "Supplementary Section S15") to reference
+the label only.
+
+**Adopted write-up text** (verbatim from Kyuri, ready to paste into `main2.tex` during
+the manuscript-prose pass -- not applied now, per the standing instruction on that
+file and because prose is still last in the update order, Section 38):
+
+Supplement subsection:
+
+    \subsection{Feedback extension for cyclic orientation specifications}
+    \label{supp:feedback}
+
+    Four of the 16 combinations of the directionally uncertain relationships
+    produced a directed feedback loop and therefore fell outside the recursive SCM
+    used for the primary directional-sensitivity analysis. Rather than discarding
+    these specifications, we examined them separately as linear equilibrium
+    models. All four contained the same core feedback loop,
+    \[
+    \text{weather risk} \rightarrow \text{belief/concern}
+    \rightarrow \text{present harm} \rightarrow \text{weather risk},
+    \]
+    with the remaining uncertain directions varying around this structure.
+
+    All four non-recursive models converged successfully and produced finite
+    standard errors and positive residual variances. The fitted systems also had
+    stable equilibria, with spectral radii between approximately .37 and .45, well
+    below 1. The corresponding $(I-B)$ matrices were well conditioned, indicating
+    that the equilibrium solutions were not numerically fragile.
+
+    We then calculated the same single-node $+0.5$ SD interventions used in the
+    recursive working-SCM analysis, but solved for the equilibrium of the
+    simultaneous system rather than propagating the intervention through a
+    one-way sequence of equations. Each cyclic specification was compared with the
+    otherwise identical acyclic specification obtained by removing the
+    loop-closing weather risk $\rightarrow$ belief/concern direction.
+
+    The equilibrium intervention effects were generally close to those from the
+    corresponding acyclic models. Effects for social norms, trust in science,
+    policy support, and political orientation were essentially unchanged, while
+    the effect of present harm changed little. Belief/concern was mildly
+    attenuated under feedback, to approximately .93 times the corresponding
+    acyclic effect. Weather risk showed the clearest difference, with its
+    intervention effect amplified by approximately 22--23\% across all four
+    feedback specifications. Future harm changed only slightly when it retained a
+    route into the feedback loop and lost its effect when that route was removed
+    by the alternative orientation.
+
+    Overall, allowing these four cyclic specifications to operate as stable
+    equilibrium systems did not qualitatively change the intervention ranking or
+    produce unstable amplification. The main exception was weather risk, whose
+    downstream effect was moderately larger when its relationship with
+    belief/concern formed part of a feedback loop.
+
+Supplementary figure caption:
+
+    \caption{Single-node intervention effects across recursive and
+    feedback-compatible directional specifications. Diamonds show the baseline
+    working SCM, circles show the remaining acyclic directional specifications,
+    and triangles show the four cyclic specifications analyzed as stable linear
+    equilibrium systems. The cyclic models generally produced effects close to
+    their acyclic counterparts, with the clearest difference for weather risk,
+    whose equilibrium intervention effect was approximately 22--23\% larger.}
+
+Methods (one sentence, placed with the primary directional-sensitivity description):
+
+    Of the 16 possible directional specifications, 12 were acyclic and were
+    included in the primary directional-sensitivity analysis. The remaining four
+    produced a directed feedback loop and therefore could not be analyzed using
+    the recursive intervention procedure. We examined these separately as linear
+    equilibrium systems; details are reported in Supplementary
+    Section~\ref{supp:feedback}.
+
+Results (one sentence, placed right after the acyclic sensitivity result):
+
+    The four remaining orientation combinations produced a stable feedback loop
+    and were examined separately as equilibrium systems. Their intervention
+    effects were generally similar to the acyclic specifications, although
+    weather risk was moderately amplified by approximately 22--23\% under
+    feedback (Supplementary Section~\ref{supp:feedback}).
+
+**New**: `r_patches/35_figure_cyclic_feedback_equilibrium.R` -- the supplementary
+figure script. Reads `19`'s unified output
+(`orientation_enumeration_ate_all16_with_equilibrium.csv`), one row per intervention
+node, diamonds = baseline, light jittered circles = the 11 other acyclic
+specifications, triangles = the 4 cyclic-equilibrium specifications. Deliberately
+simple (3 shape categories, no politics-distinctness styling unlike the main-text
+`fig7_uncertainty_pub.R`) since this is a compact supplementary figure. Reuses
+`node_labels_oneline` and the same row order (`TARGET_ORDER`, repeated locally since
+`10_figure7_uncertainty_pub.R` defines it in-script rather than in the shared
+`03_figure_style.R`) so it reads consistently with the main-text uncertainty figure.
+Saves to `figures/fig_supp_cyclic_feedback.pdf`. NOT yet run (needs `19`'s output,
+which Kyuri already has; no R execution available this session, verified by
+parenthesis/brace/bracket/quote parity only).
+
+**Still deferred**: Section 3.3-onward rewrite from final numbers (Kyuri's own
+stated next step, once baseline + 12-acyclic directional + confounding sensitivity
+are all finished -- confounding sensitivity finished as of Section 42), and the
+Figure 3/Table 2 regeneration + caption rewrite discussed in chat just before this.

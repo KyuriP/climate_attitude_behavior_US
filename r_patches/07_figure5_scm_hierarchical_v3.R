@@ -31,8 +31,11 @@
 #      the bootstrap asymmetry (was -.336 / -.325 for the old politics->
 #      belief_concern / policy_support->social_norms direction, consistently
 #      negative at both alphas) instead of the old theory-asserted direction.
-#      These render SOLID now (data_aligned) -- BETA_TR below still has
-#      placeholder NA for their coefficients pending a refit, see comment there.
+#      These render SOLID now (data_aligned) -- BETA_TR below has the real
+#      refit values (.530 / .135, both marked "refit 2026-09-11" in the
+#      table), not placeholders; the refit happened later the same day this
+#      comment block was first written, see analysis_decisions_log.md
+#      Section 34.
 #  (2) evidence_plot is read straight from scm_edges_finalized.csv's
 #      final_tier, no per-edge override needed anymore: 00_config.R's
 #      ORIENTATION_ASYMMETRY_EPS is now a .10 magnitude band (was .01,

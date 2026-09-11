@@ -1,10 +1,14 @@
 # 19_cyclic_feedback_equilibrium.R -- feedback/equilibrium extension for the
 # 4 structurally-cyclic orientation combinations (combo_1/5/9/13) that
 # 07_intervention_ates_8node.R and 08/09/10 skip. New 2026-09-11, per Kyuri's
-# plan (analysis_decisions_log.md Section 39) -- proposed as Supplementary
-# Section S15 ("Feedback extension for cyclic orientation specifications",
-# \label{supp:feedback}), NOT yet added to run_all.R's scripts_in_order
-# (optional/separate, same convention as 15/16/17/18).
+# plan (analysis_decisions_log.md Section 39) -- proposed as a new
+# Supplement subsection, "Feedback extension for cyclic orientation
+# specifications" (\label{supp:feedback} -- deliberately no hard-coded
+# section number: Supplementary Section S9 is being deleted, which shifts
+# every later section's number, so this one is referenced by label only
+# until the final numbering is settled, see analysis_decisions_log.md
+# Section 43). NOT yet added to run_all.R's scripts_in_order (optional/
+# separate, same convention as 15/16/17/18).
 #
 # ---- The single question this script exists to answer ---------------------
 # If the four cyclic orientation combinations are interpreted as equilibrium
