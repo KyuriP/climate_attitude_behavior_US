@@ -2088,3 +2088,85 @@ Not yet touched: `main2.tex`'s Table 2 (still shows the old politics->belief_con
 text (still describes the old 4-edge flip set). Both need updating once the refit
 is in, and are being left alone until then per standing instruction not to edit
 `main2.tex` without being asked directly.
+
+## Section 35: refit complete, betas filled in, direction fix propagated to 15/17/29; 11_interaction_moderation.R flagged as a real methodological question, not a mechanical fix
+
+Kyuri reran `01_data_prep.R` + the refit (N=870, MLR, `fixed.x=FALSE`): converged,
+CFI=.978, TLI=.959, RMSEA=.089, SRMR=.046 (vs. old CFI=.979, TLI=.962, RMSEA=.086,
+SRMR=.039 -- essentially unchanged, no fit degradation). `politics ~ belief_concern`
+=.530 (matches the old reverse-direction coefficient exactly, as expected for a
+bivariate/single-predictor standardized regression -- symmetric with the correlation,
+not an error); `policy_support ~ belief_concern + trust_science + politics +
+social_norms`, social_norms coefficient=.135. Both pasted into
+`r_patches/07_figure5_scm_hierarchical_v3.R`'s `BETA_TR` (replacing the `NA_real_`
+placeholders), global-fit comment updated with both old and new numbers.
+
+**Propagated the two-edge reversal to the other places that had their own hardcoded
+copies**, beyond 04/05/07 (already done in Section 34):
+- `15_confound_sensitivity_diagnostic.R`: `confound_candidates`'
+  `policy_support->social_norms` row reversed to `social_norms->policy_support` --
+  otherwise `drop_edges()`'s exact-direction match would silently fail to remove
+  this edge from `base_edges` once the direction changed, and the "all-8-confounds"
+  specification would silently include an edge it was supposed to drop.
+- `17_edge_confounding_classification.R`: its own `confound_candidates_in_15`
+  cross-check copy updated the same way, so it doesn't fire a false "does NOT
+  match 15" warning.
+- `r_patches/29_joint_pag_edgetype_audit.R`: `retained_edges` (the 16-edge
+  from/to labeling convention for the joint PAG audit table) and `current_flip_set`
+  (descriptive cross-check column) both updated to the new direction/flip set.
+  Purely a reporting-convention change -- the audit itself still estimates all
+  p*(p-1)/2 pairs regardless of this list, so nothing about what's computed
+  changes, only which physical direction gets labeled "from_to" vs "to_from" for
+  these two edges and which edges get flagged `in_current_flip_set` in the printout.
+
+Verified programmatically afterward that `04`'s `CURRENT_SCM_EDGES`, `05`'s
+`base_edges`, and `29`'s `retained_edges` now have byte-for-byte identical
+(from,to) key sets (16/16 match) -- no accidental third copy left inconsistent.
+
+**`clean_pipeline/11_interaction_moderation.R` was deliberately NOT fixed**, and
+this is a bigger deal than the label/tribble mismatches above. Its `edge_abbrev`
+tribble has the same stale-direction problem as 15/17/29's lists (still lists
+`"politics","belief_concern","pol_bc"` and `"policy_support","social_norms","ps_sn"`),
+so its own guard (`stopifnot(identical(key(base_edges), key(edge_abbrev[...])))`)
+will fail loudly the next time this script runs. But swapping just those two
+tribble rows would silently produce a wrong result rather than fix anything,
+because this script's whole Part D analysis (the politics-conditional SHIFT
+intervention feeding Table S9) hardcodes a causal story that the edge reversal
+has now inverted:
+
+- `scm_resid_sd` is built with the comment "politics is exogenous (SD=1)" and
+  `endogenous_nodes <- setdiff(all_nodes, "politics")` -- true under the OLD SCM
+  (politics had no incoming edges), false under the NEW one: `belief_concern` is
+  now the node with zero incoming edges in `base_edges` (politics's only equation
+  is now `politics ~ belief_concern`), so `belief_concern`, not `politics`, is the
+  actual exogenous root.
+- `simulate_scm_shift()`/`exact_shift_mean()` treat `politics_level` as a fixed
+  external input and compute `belief_concern` FROM it (`bc <- p$pol_bc * pol + ...`).
+  This is backwards from the new working SCM regardless of what `p$pol_bc`'s
+  numeric value is -- the .530 coefficient is correct in magnitude (bivariate
+  symmetry, see above) but using it to generate belief_concern from a fixed
+  politics level re-asserts the OLD causal direction inside the simulation itself.
+- Part D's entire stated rationale -- "a shift, not a common absolute target,
+  because politics -> belief_concern is a real fitted path and a common
+  do(belief_concern=0.5) would give the two political groups very different-sized
+  treatments" -- no longer holds. Under the new SCM politics doesn't confound
+  belief_concern (it's a descendant of it, not a common cause), so the original
+  reason for using a shift-conditional-on-politics design instead of a plain
+  absolute do(belief_concern=X) may no longer apply, or may need to be reframed
+  entirely (e.g. conditioning on politics as a downstream consequence rather than
+  an upstream confound changes what the S9 comparison is actually testing).
+
+This needs a real decision from Kyuri/the supervisor about what Part D and Table S9
+should now measure, not a code fix -- flagged to her directly rather than guessed at,
+the same way the earlier "belief_concern ~ ... + politics" wording contradiction was
+flagged instead of silently implemented. Parts A/B/C of the same script (the
+politics x belief_concern -> policy_support interaction significance test itself)
+are NOT affected by this -- that test only needs both variables as joint predictors
+of policy_support, which is unchanged, and doesn't depend on which of the two is
+causally upstream of the other.
+
+Committed as `d75a542`: the 07/15/17/29 fixes plus the regenerated
+`pipeline_outputs/scm_edges_finalized.csv`. `11_interaction_moderation.R` left
+unmodified and unrun.
+
+Not yet touched, per standing instruction: `main2.tex`.
