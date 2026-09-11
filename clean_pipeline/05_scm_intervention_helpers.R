@@ -9,13 +9,19 @@ suppressPackageStartupMessages({
   library(purrr); library(tibble)
 })
 
-# ---- The working SCM's 16 edges, in ONE baseline orientation. Verbatim -----
-# from scripts 30/31/32/22 (all four already agreed on this exact edge set
-# and direction -- this is not a new decision, just a single copy of an
-# existing one).
+# ---- The working SCM's 16 edges, in ONE baseline orientation. -------------
+# UPDATED 2026-09-11: politics<->belief_concern and policy_support<->
+# social_norms now point the way the bootstrap orientation asymmetry
+# actually favors (politics asymmetry was -.336, policy_support->social_norms
+# was -.325 -- both consistently negative at both alpha levels, not a
+# staleness artifact) instead of the old theory-asserted direction. This is
+# a real change to the fitted SCM, not just a sensitivity variant -- refit
+# and paste the new belief_concern->politics and social_norms->policy_support
+# coefficients into r_patches/07_figure5_scm_hierarchical_v3.R's BETA_TR
+# before trusting that figure again. See analysis_decisions_log.md.
 base_edges <- tibble::tribble(
   ~from,               ~to,
-  "politics",          "belief_concern",
+  "belief_concern",    "politics",
   "belief_concern",    "harm_future",
   "belief_concern",    "harm_present",
   "harm_future",       "harm_present",
@@ -24,7 +30,7 @@ base_edges <- tibble::tribble(
   "belief_concern",    "policy_support",
   "trust_science",     "policy_support",
   "politics",          "policy_support",
-  "policy_support",    "social_norms",
+  "social_norms",      "policy_support",
   "trust_science",     "social_norms",
   "harm_present",      "weather_risk_prep",
   "belief_concern",    "weather_risk_prep",
@@ -61,13 +67,19 @@ if (file.exists(scm_csv_path)) {
 }
 
 # ---- The 4 directionally-unresolved edges, flippable for the 16-scenario ---
-# orientation-sensitivity enumeration. Verbatim from 30/31/32.
+# orientation-sensitivity enumeration. UPDATED 2026-09-11: politics/
+# belief_concern and policy_support/social_norms are OUT (their asymmetry is
+# large, just pointing the other way -- see base_edges above, they're no
+# longer flip candidates, they're just correctly oriented now). IN: the two
+# weather_risk_prep edges, whose pooled asymmetry is genuinely near zero
+# (+.065 and +.078, both under the .10 band in 00_config.R). social_norms->
+# climate_behavior and harm_future->harm_present are unchanged.
 flip_candidates <- tibble::tribble(
-  ~edge_label,                          ~from,             ~to,
-  "politics -> belief_concern",          "politics",       "belief_concern",
-  "policy_support -> social_norms",      "policy_support",  "social_norms",
-  "social_norms -> climate_behavior",    "social_norms",    "climate_behavior",
-  "harm_future -> harm_present",         "harm_future",     "harm_present"
+  ~edge_label,                              ~from,               ~to,
+  "belief_concern -> weather_risk_prep",     "belief_concern",    "weather_risk_prep",
+  "harm_present -> weather_risk_prep",       "harm_present",      "weather_risk_prep",
+  "social_norms -> climate_behavior",        "social_norms",      "climate_behavior",
+  "harm_future -> harm_present",             "harm_future",       "harm_present"
 )
 n_flip <- nrow(flip_candidates)
 stopifnot(n_flip == 4)

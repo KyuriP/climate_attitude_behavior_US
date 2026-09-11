@@ -32,7 +32,19 @@ ABBR_EXT <- c(ABBR, climate_behavior = "CB")
 
 # ---- scm edge-inclusion rule ----
 EXISTENCE_MIN <- 0.60
-ORIENTATION_ASYMMETRY_EPS <- 0.01
+
+# an edge only counts as bootstrap-resolved if the pooled FCI orientation
+# asymmetry clears this band in magnitude (and is positive, i.e. in the
+# asserted direction). Below the band -- or negative -- the direction is
+# either theory-completed on substantive grounds or, for harm_future->
+# harm_present specifically, flagged uncertain because its per-alpha
+# asymmetry also flips sign across the two bootstrap alpha levels (see
+# r_patches/21_orientation_crossalpha_table.R and
+# r_patches/27_diagnose_hf_hp_edge.R). Its pooled asymmetry (+.076) already
+# falls under this .10 band on its own, so the two criteria agree for the
+# current bootstrap array -- adopted 2026-09-11, replacing the old .01
+# sign-only threshold (see analysis_decisions_log.md).
+ORIENTATION_ASYMMETRY_EPS <- 0.10
 
 # ---- input data ----
 RAW_DATA_DIR <- "data_henry"

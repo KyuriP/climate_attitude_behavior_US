@@ -21,25 +21,29 @@
 # got added to the skeleton after adding a second predictor to those nodes in
 # the lavaan model - coefficients below are from that refit (N=870, MLR).
 # global fit for the 16-edge model: CFI=.979, TLI=.962, RMSEA=.086
-# [.074,.100], SRMR=.039 (slightly better than the old 14-edge fit).
+# [.074,.100], SRMR=.039 (slightly better than the old 14-edge fit) -- NEEDS
+# A NEW FIT NUMBER once belief_concern->politics / social_norms->
+# policy_support are refit (see below), this one is now stale.
 #
-# two line types - solid = bootstrap-supported, dashed = direction picked on
-# substantive grounds. harm_future->present_harm is technically data_aligned
-# by the pooled-sign rule (pooled bootstrap asymmetry is positive), but that
-# sign flips once the two bootstrap alpha thresholds are checked separately
-# instead of pooled - so a plain solid line overstates how settled its
-# direction actually is.
+# UPDATED 2026-09-11, two separate changes:
+#  (1) belief_concern->politics and social_norms->policy_support now follow
+#      the bootstrap asymmetry (was -.336 / -.325 for the old politics->
+#      belief_concern / policy_support->social_norms direction, consistently
+#      negative at both alphas) instead of the old theory-asserted direction.
+#      These render SOLID now (data_aligned) -- BETA_TR below still has
+#      placeholder NA for their coefficients pending a refit, see comment there.
+#  (2) evidence_plot is read straight from scm_edges_finalized.csv's
+#      final_tier, no per-edge override needed anymore: 00_config.R's
+#      ORIENTATION_ASYMMETRY_EPS is now a .10 magnitude band (was .01,
+#      sign-only), so belief_concern->weather_risk_prep (+.065),
+#      harm_present->weather_risk_prep (+.078), and harm_future->harm_present
+#      (+.076 pooled, but sign-flips per-alpha -- see 21/27 in r_patches)
+#      all correctly fall out as "substantive" (dashed) from 04_scm_finalize.R's
+#      audit directly, same as social_norms->climate_behavior always has.
 #
-# First tried flagging just that one edge with a footnote-style edge label
-# ($^\S$, matching its row in Table~tab:orientation) instead of adding a
-# third lty, so the line style stayed binary and the caveat lived in the
-# caption. Turned out to read as more confusing on the actual plot than the
-# thing it was trying to fix - a solid line with a stray symbol next to it
-# looks like a typo unless you already know to look for it. Simpler fix:
-# just plot this edge dashed, same as the other direction-uncertain edges.
-# No special mark needed - the line style itself now says what it needs to
-# say, with the pooled-vs-per-threshold detail still spelled out in the
-# caption text.
+# two line types - solid = bootstrap-supported (in the asserted direction),
+# dashed = direction picked on substantive grounds or genuinely too weak/
+# inconsistent to call.
 
 suppressPackageStartupMessages({
   library(qgraph)
@@ -80,7 +84,7 @@ scm_layout_matrix <- function(node_order) {
 # table; last two are the refit values for the two newly-added edges.
 BETA_TR <- tibble::tribble(
   ~from,                ~to,                   ~beta,
-  "politics",           "belief_concern",       .530,
+  "belief_concern",     "politics",             NA_real_,  # TODO: refit (reversed from politics->belief_concern 2026-09-11), paste real coefficient
   "belief_concern",     "harm_future",          .856,
   "belief_concern",     "harm_present",         .291,
   "harm_future",        "harm_present",         .636,
@@ -89,7 +93,7 @@ BETA_TR <- tibble::tribble(
   "politics",           "policy_support",       .113,
   "trust_science",      "policy_support",       .491,
   "trust_science",      "social_norms",         .460,
-  "policy_support",     "social_norms",         .284,
+  "social_norms",       "policy_support",       NA_real_,  # TODO: refit (reversed from policy_support->social_norms 2026-09-11), paste real coefficient
   "harm_present",       "weather_risk_prep",    .426,  # was .520, dropped once belief_concern added as 2nd predictor
   "harm_present",       "climate_behavior",     .311,
   "weather_risk_prep",  "climate_behavior",     .186,
@@ -116,12 +120,6 @@ scm_edges <- audited |>
   inner_join(BETA_TR, by = c("from", "to")) |>
   mutate(evidence_plot = final_tier)
 stopifnot(nrow(scm_edges) == 16)
-
-# plot harm_future->harm_present dashed even though the audit calls it
-# data_aligned (see the header comment - pooled sign is positive but flips
-# per-threshold). this only touches which lty gets drawn for this one edge,
-# not the audit's own final_tier in scm_edges_finalized.csv.
-scm_edges$evidence_plot[scm_edges$from == "harm_future" & scm_edges$to == "harm_present"] <- "substantive"
 
 na_pairs <- scm_edges |> filter(is.na(beta)) |> select(from, to)
 na_beta  <- scm_edges |> filter(is.na(beta))

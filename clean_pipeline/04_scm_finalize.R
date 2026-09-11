@@ -39,18 +39,24 @@ EXT_NODES <- dimnames(fci_props_ext)[[1]]
 # remove edges beyond what's listed here -- adding/removing one is still a
 # modeling decision made outside this script, just recorded here as the
 # audit target. --------------------------------------------------------------
+# UPDATED 2026-09-11: belief_concern->politics and social_norms->
+# policy_support now follow the bootstrap orientation asymmetry instead of
+# the old theory-asserted politics->belief_concern / policy_support->
+# social_norms direction (asymmetry was -.336 / -.325 respectively --
+# consistently negative at both alpha levels, not stale). See
+# analysis_decisions_log.md and 05_scm_intervention_helpers.R's header.
 CURRENT_SCM_EDGES <- tibble::tribble(
   ~from,                ~to,                   ~current_evidence,
-  "politics",           "belief_concern",      "substantive",
+  "belief_concern",     "politics",            "bootstrap",
   "belief_concern",     "harm_future",         "bootstrap_theory",
   "belief_concern",     "harm_present",        "bootstrap_theory",
-  "harm_future",        "harm_present",        "bootstrap",
+  "harm_future",        "harm_present",        "bootstrap_crossalpha_unresolved",
   "belief_concern",     "trust_science",       "substantive",
   "belief_concern",     "policy_support",      "bootstrap_theory",
   "politics",           "policy_support",      "bootstrap",
   "trust_science",      "policy_support",      "bootstrap_theory",
   "trust_science",      "social_norms",        "bootstrap",
-  "policy_support",     "social_norms",        "substantive",
+  "social_norms",       "policy_support",      "bootstrap",
   "harm_present",       "weather_risk_prep",   "substantive",
   "harm_present",       "climate_behavior",    "bootstrap",
   "weather_risk_prep",  "climate_behavior",    "bootstrap",
@@ -122,14 +128,22 @@ SUPPLEMENTARY_NOTES <- list(
   "belief_concern->weather_risk_prep" = paste(
     "Added 2026-09-03: existence is robust (p_adjacent=.946, higher than 10",
     "of the other 14 edges), clearing the same 60% rule as every other edge.",
-    "Orientation is only weakly resolved (raw asymmetry +.065, versus +.15 to",
-    "+.55 for other data_aligned edges), with high arrowhead mass at BOTH",
+    "Orientation asymmetry is only +.065, with high arrowhead mass at BOTH",
     "endpoints (.77 at belief_concern, .83 at weather_risk_prep) and little",
     "circle/undetermined mass at either -- a pattern at least as consistent",
     "with a shared latent upstream cause as with a clean directed effect.",
-    "Rendered solid (data_aligned) per the same sign-only rule used",
-    "everywhere else, but this note exists so the figure's solid line does",
-    "not overstate how cleanly this one is resolved."
+    "Under the .10 orientation-uncertainty band adopted 2026-09-11, this",
+    "falls below the band and is now rendered dashed (substantive) rather",
+    "than solid, and is one of the 4 edges varied in the directional-",
+    "sensitivity enumeration (r_patches/30_deterministic_16spec_ates.R)."
+  ),
+  "harm_present->weather_risk_prep" = paste(
+    "Pooled orientation asymmetry is +.078 (live Sep-10 bootstrap array),",
+    "falling below the .10 orientation-uncertainty band adopted 2026-09-11 --",
+    "current_evidence was already tagged 'substantive' ahead of this (the",
+    "old .01 sign-only rule called it data_aligned, hence the mismatch flag",
+    "this row used to raise). One of the 4 edges varied in the directional-",
+    "sensitivity enumeration (r_patches/30_deterministic_16spec_ates.R)."
   ),
   "harm_future->trust_science" = paste(
     "Added 2026-09-03 (second candidate-scan pass, threshold matched to 60%):",

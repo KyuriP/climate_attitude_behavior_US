@@ -2019,3 +2019,72 @@ Backup on disk (device, `~/Downloads/`): `main2.tex.bak_before_fig2fig3_relayout
 **Full re-verification compile** after all of the above (fresh `pdflatex -> bibtex -> pdflatex -> pdflatex`, `references.bib` from `~/Downloads/` specifically): 38 pages, zero fatal errors, same 8 known missing BibTeX keys, same known overfull/underfull list (unchanged from before this batch). Rendered the actual Figure 3 page and the new Figure S5 page directly and visually confirmed both.
 
 Backups on disk (device, `~/Downloads/`): `main2.tex.bak_before_fig3_tiny`, `main2.tex.bak_before_fig3_nogap`, `main2.tex.bak_before_fig3_header_size`, `main2.tex.bak_before_remove_s4`, `main2.tex.bak_before_s5_combine`.
+
+
+## Section 34: orientation-uncertainty criterion redefined, two SCM edges reversed to follow bootstrap direction, sensitivity flip-set changed
+
+Went back to the directional-sensitivity setup after discussing it directly: the
+old approach was mixing two genuinely different situations under one "directionally
+unresolved" label. `politics->belief_concern` and `policy_support->social_norms`
+have LARGE pooled orientation asymmetry (-.336 / -.325, consistently negative at
+both alpha=.05 and alpha=.01, not a staleness artifact) -- the bootstrap isn't
+undecided about these, it's actively saying the other direction. That's a
+theory-vs-data conflict, not directional uncertainty, and lumping them into the
+same flip set as edges with genuinely weak evidence made the sensitivity analysis
+harder to defend than it needed to be.
+
+**New rule, applied uniformly to all 16 edges:** an edge counts as directionally
+uncertain (dashed in Figure 3/5, and varied in the sensitivity enumeration) if its
+pooled orientation asymmetry falls under a .10 magnitude band, or if its sign
+disagrees between alpha=.05 and alpha=.01. Implemented as a single threshold change
+-- `ORIENTATION_ASYMMETRY_EPS` in `clean_pipeline/00_config.R`, .01 -> .10 -- since
+`classify_orientation()` in `04_scm_finalize.R` already rejects negative asymmetry
+regardless of magnitude, so the sign-disagreement case (harm_future->harm_present,
+pooled +.076 but -.108/+.261 per-alpha, per `r_patches/21_orientation_crossalpha_
+table.R` and `27_diagnose_hf_hp_edge.R`) is already caught by the magnitude band
+alone for the current bootstrap array; didn't wire in a second, separate per-alpha
+check since it wouldn't change the outcome and would be one more thing to keep in
+sync.
+
+Checked this threshold change against all 16 edges' live asymmetry (Sep-10 verified
+bootstrap array) before applying it, specifically to make sure nothing else crossed
+the new band unintentionally -- confirmed only the intended edges move.
+
+**Two edges reversed in the working SCM itself**, not just the sensitivity set:
+`politics->belief_concern` becomes `belief_concern->politics`, and
+`policy_support->social_norms` becomes `social_norms->policy_support` -- following
+the bootstrap's actual preferred direction instead of asserting the old
+theory-driven one against it. Updated `CURRENT_SCM_EDGES` in `04_scm_finalize.R`
+and the canonical `base_edges` in `05_scm_intervention_helpers.R` (kept identical
+sets -- 05's own provenance check would fail loudly against `scm_edges_finalized.csv`
+otherwise). Confirmed the reversed 16-edge set is still acyclic. These two edges
+now render solid (data_aligned) rather than dashed, since their asymmetry, correctly
+signed, clears the new .10 band easily.
+
+**Sensitivity flip-set changed accordingly.** Out: `politics->belief_concern`,
+`policy_support->social_norms` (no longer uncertain -- now correctly oriented, not
+flip candidates). In: `belief_concern->weather_risk_prep` (+.065) and
+`harm_present->weather_risk_prep` (+.078), both genuinely near zero. Unchanged:
+`social_norms->climate_behavior` (0) and `harm_future->harm_present` (sign-flip).
+Updated `flip_candidates` in `05_scm_intervention_helpers.R` (canonical, used by
+clean_pipeline 06-14). The r_patches copies of this same table (`02_full_
+orientation_enumeration_v4.R`, `30`/`31`/`32_deterministic_*_ates.R`) still have
+the OLD flip set and have NOT been updated -- they predate 05's consolidation and
+aren't sourced by `run_all.R`, but they'll give stale/wrong answers if run as-is.
+Worth archiving or updating before anyone reaches for them again.
+
+**Still needed before any of this is trustworthy:** refit the lavaan SCM with the
+two reversed edges and paste the new `belief_concern->politics` /
+`social_norms->policy_support` coefficients into `07_figure5_scm_hierarchical_v3.R`'s
+`BETA_TR` (currently `NA_real_` placeholders -- the script will refuse to plot
+until they're filled in, by design) and check global fit hasn't degraded; rerun
+`04_scm_finalize.R` (new final_tier for all 16 edges), then the reference pipeline,
+then the 16-specification sensitivity enumeration with the new flip set. Redraw
+Figure 3/5 only after the refit, not before -- the dashed/solid pattern depends on
+the real coefficients existing, not just the edge list being right.
+
+Not yet touched: `main2.tex`'s Table 2 (still shows the old politics->belief_concern
+/ policy_support->social_norms direction and asymmetry) and its Methods/Section 3.5
+text (still describes the old 4-edge flip set). Both need updating once the refit
+is in, and are being left alone until then per standing instruction not to edit
+`main2.tex` without being asked directly.
