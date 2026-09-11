@@ -44,12 +44,15 @@ source("clean_pipeline/run_all.R")
 ```
 
 This runs `clean_pipeline/01` through `14` in order and freezes the result (with a manifest and a
-baseline sanity check) into `pipeline_outputs/reference_runs/`. Scripts `15`-`18` are optional
-follow-on sensitivity analyses; see `clean_pipeline/README.md` for details and dependencies. Figure
-and supplementary-analysis scripts in `r_patches/` are run separately once `clean_pipeline/`'s output
-is in place.
+baseline sanity check) into `pipeline_outputs/reference_runs/`. Scripts `15`-`19` are optional
+follow-on sensitivity/extension analyses; `20_stability_matrix_figures.R` regenerates two Supplement
+figures straight from `03`'s bootstrap output and doesn't need the rest of the chain. See
+`clean_pipeline/README.md` for details and dependencies. Figure and supplementary-analysis scripts in
+`r_patches/` are run separately once `clean_pipeline/`'s output is in place.
 
 ## Requirements
 
-R packages: `dplyr`, `tidyr`, `readr`, `huge`, `qgraph`, `pcalg`, `lavaan`, `ggplot2`, and (for the
-sensitivity analyses in `r_patches/14`-`16`) `RCIT`/`RCoT` and `micd`.
+R packages: `dplyr`, `tidyr`, `readr`, `purrr`, `huge`, `qgraph`, `igraph`, `graph`, `pcalg`,
+`lavaan`, `ggplot2`, `patchwork`, `tibble`, `scales`, `psych`, `bootnet`, `arrow`, `memoise`, `furrr`,
+`future`, and (for the sensitivity analyses in `r_patches/14`-`16`) `RCIT`/`RCoT` and `micd`. The CCI
+skeleton check in `r_patches/10` additionally needs `CCI.KP` (or its predecessor `CCI`).

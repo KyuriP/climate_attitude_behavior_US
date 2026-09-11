@@ -33,6 +33,9 @@ run_all.R                                 (optional -- runs 01-14 fresh and free
 15_confound_sensitivity_diagnostic.R      (optional -- needs 01+02 live, see its header)
 16_extended_pag_lvida.R                   (optional -- needs 03's agg_ext/node_order_ext/context_idx live, and lv-ida downloaded separately, see its header)
 17_edge_confounding_classification.R      (optional -- just reads pipeline_outputs csvs, no live session objects needed)
+18_bootstrap_lvida.R                      (optional -- bootstraps the fci pag -> mag -> lv-ida chain for sampling-variability cis on 16's single-node effects, needs 03's extended objects live and lv-ida downloaded separately, see its header)
+19_cyclic_feedback_equilibrium.R          (optional -- equilibrium treatment of the 4 structurally-cyclic orientation combos 07-10 skip, same convention as 15-18, see its header)
+20_stability_matrix_figures.R             (optional -- regenerates the two supplement stability-matrix figures straight from 03's bootstrap output, doesn't touch 04-19)
 ```
 
 Everything's pulled with `sed` from the qmd's / r_patches' actual text, not
@@ -40,7 +43,10 @@ retyped, so the numerical logic matches what already produced the current
 numbers, except where a script says otherwise (11's exact cross-check;
 05/13 sharing one `base_edges` instead of separate copies). 15, 16, and 17
 are new, not migrated from anywhere -- see "still open" below for why they
-exist.
+exist. 18 and 19 extend that same 15/16 line of work (sampling variability
+on 16's lv-ida effects, and an equilibrium treatment of the cyclic combos);
+20 is unrelated to any of that -- it just re-plots two of 03's existing
+bootstrap outputs, no new modeling.
 
 ## what each one does
 
@@ -55,7 +61,11 @@ exist.
   the values locked in on 2026-09-08. refuses to run if 15/16/17 objects
   are already in the session -- restart R first, this is meant to be a
   clean run, not a continuation of whatever was open before. see
-  "reference runs" below.
+  "reference runs" below. (`finish_reference_freeze.R` is the resume
+  version of this -- for when 01-09 already ran fine in the live session
+  and redoing them just to reach the freeze step would be wasteful: source
+  10-14 yourself, in order, then this file does run_all.R's exact freeze +
+  baseline-check + manifest tail on top of what's already live.)
 - `01_data_prep.R` -- raw parquet through df_main/df_extended (waves 1-4
   only; all-wave versions kept as df_main_allwave/df_extended_allwave for
   the sensitivity check). also produces df_long, df_behavior_w5 for 12/13/14.
@@ -124,6 +134,26 @@ exist.
   direction reversal, directed/bidirected flips, and thin-existence edges,
   see its header). cross-checks its own output against 15's hardcoded
   8-edge list and warns if they've drifted apart.
+- `18_bootstrap_lvida.R` -- propagates fci-pag sampling variability into
+  16's pag-compatible single-node lv-ida effects (each bootstrap resample
+  is one unit of the outer summary; mags are not pooled across resamples
+  as if they were probability draws). needs 03's extended objects live and
+  lv-ida downloaded separately, same as 16. not in run_all.R's
+  scripts_in_order -- optional, same convention as 15-17.
+- `19_cyclic_feedback_equilibrium.R` -- for the 4 structurally-cyclic
+  orientation combos (combo_1/5/9/13) that 07-10 skip: treats them as
+  equilibrium systems (x = Bx + eps) instead of discarding them, and checks
+  whether that changes the intervention conclusions relative to the 12
+  recursive combos. per Kyuri's plan (analysis_decisions_log.md Section
+  39), proposed as a new supplement subsection referenced by label only
+  (\label{supp:feedback}) since S9's deletion is still shifting later
+  section numbers (Section 43). not in run_all.R's scripts_in_order.
+- `20_stability_matrix_figures.R` -- the two supplement stability-matrix
+  figures, pulled out of the qmd so they don't depend on it. reads
+  `node_order_cd`/`fci_props_main`/`pc_props_main`/`fci_marks`/`pc_marks`
+  straight from 03's saved bootstrap output (falls back to the latest
+  dated .rds under OUTPUT_DIR if those aren't live in session), so it
+  never forces a bootstrap re-run just to re-plot.
 
 ## reviewed, not migrated
 
@@ -229,13 +259,17 @@ fresh session too.
   point-estimate ATE. 15 is the quick diagnostic version of this (manual
   covariance replacement on the 8 edges the joint audit flagged as
   bidirected-plurality at both alpha levels). 16 is the more principled
-  version (an actual pag object + listMags()/lv.ida()), but it's brand new
-  and unrun -- don't treat either one's output as settled until it's been
-  run and read. not touching main9.tex until this is resolved.
-- `run_all.R` is written -- not yet run. once it's run clean (all 8
-  baseline ATEs matching), that frozen `reference_runs/<timestamp>/`
-  bundle is what 15/16/17 should be read against, and what Table 3/Results
-  gets rewritten from -- see "reference runs" below.
+  version (an actual pag object + listMags()/lv.ida()). both have been run
+  now -- 16's output is in `pipeline_outputs/extended_pag_*.csv`, and 18
+  (bootstrapped sampling-variability cis on top of 16) is in
+  `pipeline_outputs/bootstrap_lvida_*.csv`. that doesn't mean the question
+  is settled, just that there's real output to read now instead of a
+  written-but-unrun script. not touching main9.tex until this is resolved.
+- `run_all.R` has been run clean twice now
+  (`reference_runs/20260908_212907/` and `reference_runs/20260911_154109/`,
+  both with all 8 baseline ATEs matching). the more recent of the two is
+  what 15-20 should be read against, and what Table 3/Results gets
+  rewritten from -- see "reference runs" below.
 - resyncing N_BOOT to 2500 -- would need rerunning 03+04 and diffing the new
   scm_edges_finalized.csv against the current one before touching any
   manuscript text. not done, not urgent.
