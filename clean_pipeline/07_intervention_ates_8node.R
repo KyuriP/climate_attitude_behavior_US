@@ -40,11 +40,28 @@ det_8node_out <- scenario_list |>
   }) |>
   dplyr::bind_rows()
 
-stopifnot(nrow(det_8node_out) == 16 * 8)
+# 4 of the 16 orientation combinations are structurally cyclic and always
+# skipped by is_acyclic() above -- not a bug. Since 05_scm_intervention_
+# helpers.R (updated 2026-09-11) put BOTH of weather_risk_prep's parent
+# edges (belief_concern->weather_risk_prep, harm_present->weather_risk_prep)
+# into the flip set, flipping the first while leaving the second unflipped
+# always creates the 3-cycle belief_concern -> harm_present ->
+# weather_risk_prep -> belief_concern (harm_present's belief_concern parent
+# is fixed, never flippable) -- true regardless of the other two flip
+# candidates' state, hence exactly 4 (= 2x2) of the 16 combinations are
+# cyclic (combo_1/5/9/13). The old flip set never had two edges sharing a
+# child node, so this never happened before -- the previous hardcoded
+# nrow == 16*8 check was a leftover from that and is now wrong; replaced
+# with a check computed from is_acyclic() itself so it can't drift out of
+# sync with the flip set again.
+n_acyclic_scenarios <- sum(vapply(scenario_list, function(idx) is_acyclic(flip_edges(base_edges, idx)), logical(1)))
+stopifnot(n_acyclic_scenarios == 12)
+stopifnot(nrow(det_8node_out) == n_acyclic_scenarios * length(node_targets))
 
 write.csv(det_8node_out, file.path(TABLES_DIR, "orientation_enumeration_ate_deterministic_8node.csv"), row.names = FALSE)
 message("Saved ", file.path(TABLES_DIR, "orientation_enumeration_ate_deterministic_8node.csv"),
-        " (", nrow(det_8node_out), " rows: 16 specs x 8 nodes).")
+        " (", nrow(det_8node_out), " rows: ", n_acyclic_scenarios, " acyclic specs x ",
+        length(node_targets), " nodes; 4 of 16 combos skipped as structurally cyclic).")
 
 cat("\n(Quick check -- baseline (combo_0) values for the two new nodes:)\n")
 det_8node_out |> dplyr::filter(scenario == "combo_0", node %in% c("harm_future", "politics")) |> print()
