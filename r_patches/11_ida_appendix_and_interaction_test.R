@@ -46,16 +46,12 @@
 #             refinement of the already-fitted lavaan model -- so it can run
 #             regardless of the FCI/CCI/PC framing above.
 #
-# WHERE THIS FITS
-# ----------------
 # Run climate_analysis_avg_v2_altweather.qmd first, through Section 7.5/7.6
 # (the working SCM + lavaan fit). This script assumes these objects exist:
 #   node_order_ext, pc_ext_amat_05, ext_dat_tr, trimmed_nodes, tr_amat,
 #   lav_model_tr, sem_fit_tr, std_tr, scm_coefs, scm_resid_sd, simulate_scm()
 #
-# WHAT TO CHECK
-# --------------
-# Part A: console output, especially str(eff)/dim() of what ida()/jointIda()
+# worth checking -- Part A: console output, especially str(eff)/dim() of what ida()/jointIda()
 # actually return in the installed pcalg version -- printed defensively
 # (structure before summarizing) since pcalg's exact return shape can differ
 # across versions and hasn't been confirmed against a live run here.

@@ -1,8 +1,6 @@
 # =============================================================================
 # 29_joint_pag_edgetype_audit.R  (v2, 2026-09-06)
 #
-# WHY THIS SCRIPT EXISTS
-# -----------------------
 # The scalar asymmetry statistic A_alpha = P(arrow at destination) - P(arrow
 # at source), used everywhere so far (script 21's table, script 27's
 # diagnostic, Table 2), collapses several genuinely different PAG relation
@@ -25,8 +23,8 @@
 # per-resample array). NOTHING else reruns: not PC, not the SCM, not the
 # intervention bootstrap, not behavior/attrition/measurement analyses.
 #
-# v2 CHANGES (three corrections made before running this for real)
-# ------------------------------------------------------------------------
+# v2 changes -- three corrections made before running this for real:
+#
 # 1. FAIL LOUDLY on any endpoint mark combination outside the 7 canonical
 #    PAG relations (i_to_j, j_to_i, bidirected, i_ocirc_arrow_j,
 #    j_ocirc_arrow_i, circle_circle, no_edge). v1 silently folded anything
@@ -77,7 +75,7 @@
 #    + circle-circle mass, purely so 16 edges are easy to scan) but carries
 #    no TRUE/FALSE classification either -- it's a sort order, not a rule.
 #
-# HOW TO USE: run within the same .qmd session, after Section 7.4 (so
+# run within the same .qmd session, after Section 7.4 (so
 # agg_ext, node_order_ext, context_idx, ALPHAS are already defined -- same
 # prerequisites as scripts 21-28, minus n_boot, which this script no longer
 # depends on -- see note 2 above).

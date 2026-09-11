@@ -12,8 +12,6 @@
 #           (scm_mean_propagate(), same deterministic helper script 30 already
 #           used for the 6 single-node targets).
 #
-# WHY THIS SCRIPT EXISTS
-# -----------------------
 # Script 30 fixed the single-node ATEs (script 02 v4's Monte Carlo estimate
 # had produced a spurious negative lower bound for policy_support, since its
 # true ATE in some scenarios is structurally exactly 0 once its only outgoing
@@ -23,9 +21,7 @@
 # targeted fix -- worth doing that rerun deterministically too, later." This
 # is that rerun, same method, extended from 6 targets to all 41.
 #
-# WHAT THIS SCRIPT DOES NOT CHANGE
-# ----------------------------------
-# base_edges, flip_candidates, flip_edges(), is_acyclic(), build_lavaan_
+# what stays the same: base_edges, flip_candidates, flip_edges(), is_acyclic(), build_lavaan_
 # syntax(), topo_order(), scm_mean_propagate(), and the scenario_list
 # generation are copied VERBATIM from script 30 (which copied the first six
 # from 02 v4 verbatim in turn) -- the 16 fitted lavaan models are IDENTICAL
@@ -34,8 +30,7 @@
 # intervene_targets (the 41-target enumeration) is copied verbatim from
 # 02 v4's build_intervene_targets().
 #
-# OUTPUT
-# ------
+# output:
 # tables/orientation_uncertainty_band_combos_full_deterministic.csv -- the
 # corrected 41-row combo ATE range table, same shape/columns as v4's
 # tables/orientation_uncertainty_band_combos_full.csv, to be compared side by
@@ -49,9 +44,7 @@
 # member nodes has no remaining downstream path (the same policy_support
 # pattern script 30 already found and fixed for the single-node case).
 #
-# HOW TO USE
-# ----------
-# Run in the same R session as 02 v4 / script 30 (or independently -- this
+# run in the same R session as 02 v4 / script 30 (or independently -- this
 # script is self-contained and refits its own 16 lavaan models). Requires
 # df_extended (N=870, pre-Wave-5 corrected data) already in scope, exactly as
 # 02 v4 and script 30 required.

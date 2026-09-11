@@ -1,8 +1,6 @@
 # =============================================================================
 # 12_allwave_sensitivity_check.R
 #
-# WHY THIS SCRIPT EXISTS
-# -----------------------
 # The Supplement's all-wave-vs-Waves-1-4 sensitivity paragraph (Section
 # "Waves-1-4 vs. all-wave composite construction") currently reports
 # coefficients (.309/.097/.276 for all-wave; .306/.113/.249 for Waves-1-4-only)
@@ -18,16 +16,13 @@
 # construction code directly), so this rerun is a clean, apples-to-apples
 # check under the current pipeline -- no other change needed.
 #
-# HOW TO USE
-# ----------
 # Run this in a live session AFTER Section 4.4 has executed (so all four
 # objects above exist -- this is already true by the time you reach the later
 # analysis sections, so if rerunning the whole .qmd top to bottom this
 # just needs to be sourced anywhere after that point). It only reads existing
 # objects and writes one small CSV; no bootstrap, no refitting of the SCM.
 #
-# OUTPUT
-# ------
+# output:
 #   tables/allwave_sensitivity_check.csv -- one row per (construction, term),
 #   with the standardized coefficient, so the manuscript sentence can be
 #   updated with confirmed numbers.

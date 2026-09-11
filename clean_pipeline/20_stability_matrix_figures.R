@@ -18,14 +18,11 @@
 # identical in structure to the qmd's fci_props_combined/pc_props_combined --
 # this is a rename, not new math.
 #
-# WHAT THIS SCRIPT PRODUCES
-# --------------------------
-#   figures/figS_stability_matrix_detailed.pdf (FCI per-end-mark detail, Supplement)
-#   figures/figS_stability_pc.pdf              (PC-stable, appendix)
+# produces figures/figS_stability_matrix_detailed.pdf (FCI per-end-mark
+# detail, Supplement) and figures/figS_stability_pc.pdf (PC-stable,
+# appendix).
 #
-# WHERE THIS FITS IN THE PIPELINE (qmd-independent)
-# ---------------------------------------------------
-# Run, in ONE R session, in order:
+# qmd-independent -- run, in ONE R session, in order:
 #   source("clean_pipeline/00_config.R")
 #   source("clean_pipeline/01_data_prep.R")
 #   source("clean_pipeline/02_ggm.R")

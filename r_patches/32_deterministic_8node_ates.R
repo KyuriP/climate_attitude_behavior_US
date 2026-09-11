@@ -1,8 +1,6 @@
 # =============================================================================
 # 32_deterministic_8node_ates.R  (NEW, 2026-09-07)
 #
-# WHY THIS SCRIPT EXISTS
-# -----------------------
 # Figure 7 has always shown single-node intervention effects for exactly 6
 # nodes (the ones in intervene_nodes across scripts 02/30/31: belief_concern,
 # harm_present, weather_risk_prep, social_norms, trust_science,
@@ -26,24 +24,19 @@
 # downstream need to say so explicitly rather than let it sit next to the
 # other 7 rows implying equivalence.
 #
-# WHAT THIS SCRIPT DOES NOT CHANGE
-# ----------------------------------
-# Does not touch the 41-target combo analysis (scripts 02/31) or its outputs
+# what stays the same: does not touch the 41-target combo analysis (scripts 02/31) or its outputs
 # at all -- politics and harm_future stay out of intervene_nodes there, since
 # that 41-target set is specifically the "policy-relevant nodes" combinatorial
 # space referenced throughout the text and Table 3. This script only adds two
 # more single-node rows for Figure 7.
 #
-# OUTPUT
-# -------
+# output:
 # tables/orientation_enumeration_ate_deterministic_8node.csv -- same schema as
 # tables/orientation_enumeration_ate_deterministic.csv (scenario, node,
 # ate_climate_behavior), but with harm_future and politics rows appended (16
 # scenarios x 8 nodes = 128 rows total, up from 96).
 #
-# HOW TO USE
-# -----------
-# Run this after script 30 (or standalone -- it re-fits its own 16 lavaan
+# run this after script 30 (or standalone -- it re-fits its own 16 lavaan
 # models, doesn't depend on script 30 having been run in the same session).
 # Needs df_extended already loaded in the session.
 # Then re-run r_patches/10_figure7_uncertainty_pub.R, which has been updated

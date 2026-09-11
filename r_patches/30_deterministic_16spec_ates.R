@@ -5,8 +5,6 @@
 #           propagation (scm_mean_propagate() / single_node_ates(), the same
 #           deterministic helpers already used in scripts 22/23/26/27).
 #
-# WHY THIS SCRIPT EXISTS
-# -----------------------
 # Script 02 v4 enumerated all 2^4=16 orientation combinations for the four
 # directionally-unresolved edges and computed six single-node ATEs per
 # scenario via Monte Carlo simulation (rnorm()-based sampling, n=20000).
@@ -22,9 +20,7 @@
 # just footnoting the negative lower bound as Monte Carlo noise -- this
 # script is that rerun.
 #
-# WHAT THIS SCRIPT DOES NOT CHANGE
-# ----------------------------------
-# base_edges, flip_candidates, flip_edges(), is_acyclic(), build_lavaan_
+# what stays the same: base_edges, flip_candidates, flip_edges(), is_acyclic(), build_lavaan_
 # syntax(), topo_order(), and the scenario_list/scenario_flip_labels
 # generation are copied VERBATIM from 02_full_orientation_enumeration_v4.R
 # -- the 16 fitted lavaan models are IDENTICAL to v4's (same data, same
@@ -38,8 +34,7 @@
 # out of scope for this targeted fix -- worth doing that
 # rerun deterministically too, later).
 #
-# OUTPUT
-# ------
+# output:
 # tables/orientation_uncertainty_band_full_deterministic.csv -- the
 # corrected 6-row single-node ATE range table, SAME shape/columns as v4's
 # tables/orientation_uncertainty_band_full.csv, to be compared side by side
@@ -48,9 +43,7 @@
 # which should now read exactly 0 (or a value indistinguishable from 0 to
 # reporting precision) instead of -.00707.
 #
-# HOW TO USE
-# ----------
-# Run AFTER script 02 v4 (or independently -- this script is self-contained
+# run AFTER script 02 v4 (or independently -- this script is self-contained
 # and refits its own 16 lavaan models; it does not depend on any object
 # left behind by 02 v4). Requires df_extended (N=870, pre-Wave-5 corrected
 # data) already in scope, exactly as v4 required.

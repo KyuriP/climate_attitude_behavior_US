@@ -3,8 +3,6 @@
 #           the four edges current data leaves genuinely direction-unclear,
 #           with model-fit indices attached to every specification.
 #
-# WHY 16 SPECIFICATIONS, NOT 8
-# --------------------------------------------
 # Script 27 (r_patches/27_diagnose_hf_hp_edge.R) ran the 5-step diagnostic on
 # harm_future -> harm_present, the single largest coefficient in the model
 # (beta=.636). Findings: (1) adjacency is 100% at BOTH alpha=.05 and
@@ -52,8 +50,6 @@
 # need no code changes to pick up the 16-specification results -- only their
 # "8 specifications" comments/captions needed a text update.
 #
-# HOW TO USE
-# ----------
 # Run this AFTER script 01 (or at minimum after Part A's data-correction
 # step, so that df_extended in the session is already the pre-Wave-5
 # primary N = 870 dataset), AND after the SCM model spec (in the .qmd,
@@ -62,7 +58,7 @@
 # self-contained: it redefines its own copies of base_edges,
 # flip_candidates, and the helper functions.
 #
-# OUTPUT: 16 rows/specifications. Every one is EXPLICITLY checked for
+# output: 16 rows/specifications. Every one is EXPLICITLY checked for
 # acyclicity and lavaan convergence -- status will be "ok", "cyclic_skipped",
 # or "fit_failed" per scenario; do not assume 16/16 will be "ok". Read the
 # actual counts off the console output and full_fit table below before

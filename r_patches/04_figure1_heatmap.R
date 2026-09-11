@@ -5,8 +5,6 @@
 # lower-triangle-only correlation matrix into a standard lower-triangle +
 # diagonal correlogram.
 #
-# HOW THE DIAGONAL WORKS
-# ---------------------------------------
 # - The plotting grid uses numeric axes (1..8 per node) with custom
 #   breaks/labels rather than discrete factor axes, so that a density curve
 #   can be drawn as a small inset inside each diagonal cell -- discrete

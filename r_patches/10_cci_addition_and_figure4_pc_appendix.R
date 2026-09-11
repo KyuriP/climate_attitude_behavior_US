@@ -20,8 +20,6 @@
 # moving PC to the appendix. That FCI+CCI design is superseded by the note
 # above.
 #
-# WHERE THIS FITS IN THE PIPELINE
-# --------------------------------
 # Run climate_analysis_avg_v2_altweather.qmd first (interactively or knit),
 # at least through Section 7.2's single-run fits. This script assumes the
 # following objects already exist in the session:
@@ -44,8 +42,7 @@
 # still needs the qmd's plotAG()/fci_props_combined/pc_props_combined/
 # fci_marks/pc_marks for that reason, not out of oversight.
 #
-# WHAT THIS SCRIPT DOES
-# ----------------------
+# what this does:
 # 1. Single-run CCI graphs at alpha = .05 / .01 (mirrors the FCI/PC
 #    single-run panels in Section 7.2).
 # 2. Extends the bootstrap logic to also fit CCI at both alphas x 1000
@@ -54,9 +51,7 @@
 #    rerun the bootstrap just to re-plot.
 # 3. Three-way skeleton comparison (FCI vs PC vs CCI), extending 7.4.
 #
-# WHAT TO CHECK
-# --------------
-# The console output (esp. the three-way skeleton comparison in Part 3).
+# worth checking: the console output (esp. the three-way skeleton comparison in Part 3).
 # The Part 4 figures (figS_stability_matrix_detailed.pdf, figS_stability_pc.pdf)
 # now come from clean_pipeline/20_stability_matrix_figures.R -- see there.
 # =============================================================================
