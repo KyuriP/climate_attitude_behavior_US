@@ -1,0 +1,5 @@
+"combo","nearest_acyclic_combo","method","joint_fit_converged","joint_fit_se_finite","joint_fit_no_heywood","joint_fit_identified","det_I_minus_B","cond_I_minus_B","rho_B","stable"
+"combo_1","combo_0","joint_lavaan",TRUE,TRUE,TRUE,TRUE,0.951145665933518,4.86099630064367,0.446204163470033,TRUE
+"combo_5","combo_4","joint_lavaan",TRUE,TRUE,TRUE,TRUE,0.951145509250796,4.88664590730497,0.446204537578869,TRUE
+"combo_9","combo_8","joint_lavaan",TRUE,TRUE,TRUE,TRUE,0.9511454099992,4.88706838597485,0.365568239809023,TRUE
+"combo_13","combo_12","joint_lavaan",TRUE,TRUE,TRUE,TRUE,0.951145637065062,4.90693670354772,0.365567673446708,TRUE

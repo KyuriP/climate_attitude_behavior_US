@@ -2500,3 +2500,84 @@ optional/separate convention as 15/16/17/18). Implements the plan directly:
 
 (Continues with the equilibrium formulation, identification/stability checks, and
 results once `19_cyclic_feedback_equilibrium.R` has real output to report.)
+
+## Section 40 (2026-09-11): Cyclic feedback extension -- real results from Kyuri's run
+
+`19_cyclic_feedback_equilibrium.R` run for real (Kyuri's R session, after a fresh
+`run_all.R` end-to-end run confirmed clean -- Section 38/39 continued). Headline:
+**the PRIMARY joint-lavaan path worked for all 4 cyclic combos** -- no combo needed
+the feedback-strength-sweep fallback (`cyclic_feedback_strength_sweep.csv` was not
+even written, confirming this). All 4 converged, all had finite/plausible
+standardized SEs, no Heywood cases -- i.e. `lavaan` successfully fit each cyclic
+specification as a genuine non-recursive simultaneous-equations model.
+
+**Diagnostics** (`cyclic_feedback_diagnostics.csv`):
+
+| combo | nearest acyclic | det(I-B) | cond(I-B) | rho(B) | stable |
+|---|---|---|---|---|---|
+| combo_1  | combo_0  | 0.9511 | 4.86 | 0.4462 | TRUE |
+| combo_5  | combo_4  | 0.9511 | 4.89 | 0.4462 | TRUE |
+| combo_9  | combo_8  | 0.9511 | 4.89 | 0.3656 | TRUE |
+| combo_13 | combo_12 | 0.9511 | 4.91 | 0.3656 | TRUE |
+
+All 4 comfortably stable (rho(B) well under 1, not a close call), det(I-B) far from
+0, condition numbers unremarkable (~5, no numerical fragility). rho(B) is the same
+within each loop configuration (combo_1=combo_5, combo_9=combo_13) since it only
+depends on which of the two loop configurations (f4 flipped or not) is active, not
+on the independent f3 (social_norms<->climate_behavior) state -- exactly as
+expected structurally. Note: rho(B) here is NOT the same number as the earlier
+by-hand "loop gain" product a*b*c computed informally in chat before this script
+existed (0.0709 / 0.2034) -- those were approximate (bivariate-correlation-based)
+estimates; the real joint-lavaan-fit coefficients differ somewhat, and rho(B) is
+the spectral radius of the *whole* B matrix, mathematically the cube root of the
+isolated loop's own eigenvalue product for a pure 3-cycle. Both approaches agree
+on the qualitative conclusion (comfortably stable in both loop configurations); the
+joint-fit numbers here are the authoritative ones going forward, not the earlier
+hand estimates.
+
+**Substantive answer to the one question this extension was built to answer**
+(`cyclic_feedback_ate_equilibrium.csv`, Delta Y under equilibrium vs. the matched
+nearest-acyclic specification, all 4 cyclic combos agree closely with each other on
+every node's ratio):
+
+- Most nodes: **no material change** -- social_norms, trust_science, and
+  policy_support are at or within rounding of their nearest-acyclic value in every
+  combo (ratios ~1.0000, several to 5+ significant figures).
+- **belief_concern: mildly *dampened*** under the equilibrium treatment, not
+  amplified -- ratio ~0.93 in all 4 combos (about 7% smaller than the matched
+  recursive estimate).
+- **weather_risk_prep: the standout -- moderately *amplified*** -- ratio ~1.22-1.23
+  in all 4 combos (about 22-23% larger under equilibrium than the matched
+  recursive estimate). This is the node where allowing feedback matters most.
+- **harm_present**: essentially unchanged (ratio ~1.00-1.03).
+- **harm_future**: small amplification (~1.02-1.03) in the two combos where it
+  still feeds the loop (combo_1/5, harm_future->harm_present not flipped); in the
+  two combos where that edge is flipped (combo_9/13, harm_future is severed from
+  the loop -- confirmed earlier this session by hand, now confirmed with real
+  numbers), its effect is essentially identical to the matched recursive estimate
+  (combo_9, ratio ~0.99999 -- the tiny residual pathway through harm_future ->
+  trust_science -> social_norms -> climate_behavior is unaffected by the loop
+  since it never touches the loop) or **exactly 0** (combo_13, where that residual
+  pathway is *also* severed because f3 is flipped there too, removing
+  social_norms -> climate_behavior entirely).
+- politics: exactly 0 in all combos, as everywhere else in this analysis
+  (politics -> policy_support dead-ends at the sink).
+
+**Reading against Kyuri's colleague's step-4 decision rule** ("if the feedback
+cases radically amplify belief/concern or weather risk, decide whether pairs/
+triples are worth doing"): belief_concern moves the *opposite* direction (down, not
+up) and only modestly; weather_risk_prep moves up by roughly a fifth to a quarter.
+Neither reads as "radical" -- nothing changes sign, nothing blows up, and five of
+the eight single-node targets are essentially unchanged. **This looks like the
+"reassuring" case from the plan's step 6** (cyclic effects sit inside or close to
+the acyclic range) rather than the "genuinely interesting, conclusions change"
+case -- with weather_risk_prep as one specific, clean, reportable exception worth a
+sentence. Whether this is reassuring enough to skip pairs/triples, or interesting
+enough (given weather_risk_prep's ~23% move) to still run them, is Kyuri's/her
+colleague's call, not decided here.
+
+**Not yet done**: the Supp. figure (plan step 6) from
+`orientation_enumeration_ate_all16_with_equilibrium.csv` (16 rows x 8 nodes,
+tagged baseline/acyclic/cyclic_equilibrium, ready as-is for that plot); filling the
+real numbers into the draft S15 text from Section 39; the pairs/triples decision
+above; manuscript prose (still last in the update order, Section 38).
