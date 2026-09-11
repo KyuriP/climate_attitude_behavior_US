@@ -42,9 +42,12 @@
 #      all correctly fall out as "substantive" (dashed) from 04_scm_finalize.R's
 #      audit directly, same as social_norms->climate_behavior always has.
 #
-# two line types - solid = bootstrap-supported (in the asserted direction),
-# dashed = direction picked on substantive grounds or genuinely too weak/
-# inconsistent to call.
+# two line types - solid = direction retained from the working SCM baseline;
+# dashed = one of the four directions with weak or inconsistent orientation
+# evidence that are varied explicitly in the orientation-sensitivity
+# analysis. Per the 2026-09-11 decision, we no longer frame any edge as
+# "theory-overridden" or lump it in with the genuinely uncertain ones --
+# see analysis_decisions_log.md Section 38.
 
 suppressPackageStartupMessages({
   library(qgraph)
@@ -155,7 +158,9 @@ for (k in seq_len(nrow(scm_edges))) {
   W_scm[f, t] <- max(abs(b), 0.20)
 }
 
-# two tiers: data_aligned = solid, substantive = dashed
+# two tiers: data_aligned = solid (retained from the working SCM),
+# substantive = dashed (one of the 4 edges varied in the orientation-
+# sensitivity analysis) -- see analysis_decisions_log.md Section 38.
 evidence_lty_code <- c(data_aligned = 1L, substantive = 2L)
 lty_scm <- matrix(1L, n_scm, n_scm, dimnames = list(SCM_NODES, SCM_NODES))
 for (k in seq_len(nrow(scm_edges))) {
@@ -165,8 +170,8 @@ for (k in seq_len(nrow(scm_edges))) {
 
 evidence_breaks <- c("data_aligned", "substantive")
 evidence_legend_labels <- c(
-  "Data-supported orientation",
-  "Data-uncertain / theory-completed"
+  "Retained from working SCM",
+  "Varied in orientation-sensitivity analysis"
 )
 evidence_legend_lty <- unname(evidence_lty_code[evidence_breaks])
 

@@ -2269,3 +2269,112 @@ a natural fit for future work given other feedback-systems interests.
 
 Not yet touched, per standing instruction: `main2.tex` (the Methods/Supplement text
 above is ready to paste in whenever Kyuri does that pass).
+
+## Section 38 (2026-09-11): Interaction analysis/S9 removed entirely; theory-overridden/uncertain mixture retired; manuscript update order locked
+
+**Superseded**: the "rebuild Part D using observed politics as a real subgroup" plan
+from earlier the same day (Section 37 follow-up, chosen via the 4-option question
+about Part D's redesign) is superseded by this decision. The two small uncommitted
+edits made toward that rebuild (`edge_abbrev`'s two rows renamed to the post-reversal
+direction/abbreviation; the dead `scm_resid_sd` block removed) are moot now that the
+whole file is gone, but are harmless -- the file's entire content was replaced anyway.
+
+**Decision, in Kyuri's own words (2026-09-11), locking the revised analysis**:
+- Follow the data-supported direction whenever it meets the orientation criterion:
+  keep `belief_concern -> politics` and `social_norms -> policy_support` as currently
+  implemented, rather than overriding either back to the old theory-asserted direction.
+- Do not call theory-overridden edges "uncertain." That whole three-way mixture
+  (bootstrap-resolved / theory-asserted-but-now-also-bootstrap-supported /
+  theory-asserted-and-contradicted-by-bootstrap) is retired for framing purposes.
+- Directional sensitivity varies only the four genuinely weak/inconsistent directions:
+  `belief_concern<->weather_risk_prep`, `harm_present<->weather_risk_prep`,
+  `social_norms<->climate_behavior`, `harm_future<->harm_present`.
+- Remove the belief x politics moderation analysis and Supplementary Section S9
+  entirely -- with belief/concern now upstream of politics, it no longer contributes
+  cleanly to the paper (politics is not exogenous to belief_concern anymore, and
+  policy_support is a sink node, so the interaction has no downstream route to
+  climate_behavior regardless).
+- Figure 3 (`fig:scm`, `figures/fig5_scm_hierarchical.pdf`) and Table 2
+  (`tab:orientation`) get a matching conceptual simplification: solid arrows /
+  "Data-supported direction" = the 12 directions retained from the working SCM;
+  dashed arrows / "Directionally weak/inconsistent" = the four varied in sensitivity
+  analysis. No third "theory-overridden" category.
+- Update order once the clean baseline refit is done: baseline coefficients/effects ->
+  Figure 3/Table 2 -> directional sensitivity/Figure 4 -> confounding sensitivity (if
+  affected by the new baseline) -> cyclic feedback extension (proposed Supp. S15,
+  Section 37) -> manuscript prose/Supplement -> one full clean-pipeline run.
+
+**What's done as of this entry**:
+- `clean_pipeline/11_interaction_moderation.R` replaced in full with a short
+  deprecation stub explaining the removal and pointing here; left in place (not
+  `git rm`'d) so the rationale stays attached to a real file at its old path.
+  Confirmed via grep across `clean_pipeline/` and `r_patches/` that nothing else reads
+  its outputs (`interaction_coefficient.csv`, `interaction_shift_results_montecarlo.csv`,
+  `interaction_shift_results_exact.csv`) or sources the file itself -- safe to remove
+  outright rather than just gut Part D.
+- `clean_pipeline/run_all.R`'s exclusion of `"11_interaction_moderation.R"` from
+  `scripts_in_order` changed from "temporarily excluded pending a decision" to
+  "permanently removed," comment updated accordingly.
+- `r_patches/07_figure5_scm_hierarchical_v3.R`: checked `pipeline_outputs/
+  scm_edges_finalized.csv`'s `final_tier` column directly (already regenerated
+  post-reversal) -- it already classifies exactly the 4 flip-candidate edges as
+  `substantive` (dashed) and all other 12 as `data_aligned` (solid), so the
+  line-style *logic* already matched the new rule with no code change needed. Only
+  the legend text was stale: "Data-supported orientation" / "Data-uncertain /
+  theory-completed" -> "Retained from working SCM" / "Varied in orientation-
+  sensitivity analysis." Same header-comment cleanup (two spots) removing the
+  "theory-completed"/"picked on substantive grounds" framing.
+
+**Not yet done, and deliberately deferred per the update order above**:
+- Figure 3's actual redraw (rerun `r_patches/07_figure5_scm_hierarchical_v3.R` in R --
+  the legend/label logic is fixed now, but Kyuri needs to run it to regenerate the PDF)
+  and Table 2's rebuild with the two-category "Basis" scheme are next in line, but
+  Table 2 itself is hand-written LaTeX (`main2.tex` lines ~264-289, `tab:orientation`),
+  not script-generated -- rewriting it is a manuscript-prose edit, held for the
+  manuscript step per the order above, not done now.
+- Confounding-sensitivity rerun check (`17_edge_confounding_classification.R`,
+  `29_joint_pag_edgetype_audit.R`) -- both already carry the post-reversal edge
+  directions (Section 35's fixes), so likely nothing further needed here, but not
+  re-verified against a fresh end-to-end run this entry.
+- The cyclic feedback extension (proposed Supp. S15) -- not built yet.
+- Manuscript prose/Supplement pass -- **not started, per standing instruction not to
+  touch `main2.tex` without explicit sign-off, and because it's explicitly last in
+  Kyuri's own stated order.** Located for when that pass happens:
+  - Abstract/intro framing that references "theory-augmented"/"theory-completed"
+    edges as a class: `main2.tex` lines ~30-31, ~70-72.
+  - Figure 3: `main2.tex` lines ~239-268 (`fig:scm`, sources
+    `figures/fig5_scm_hierarchical.pdf`); caption currently describes the old
+    bootstrap-vs-theory two-line-style scheme and needs the retained/varied wording
+    to match the figure once it's redrawn.
+  - Table 2: `main2.tex` lines ~264-289 (`tab:orientation`) -- five hand-written
+    evidential-basis groups (bootstrap-aligned, bootstrap+theory-aligned,
+    theory-then-bootstrap-supported, theory-only, threshold-sensitive, weak/symmetric)
+    collapse to two: "Data-supported direction" (12 rows) / "Directionally
+    weak/inconsistent" (4 rows, the flip candidates) -- footnotes referencing the old
+    categories (`$^{\dagger}$`, `$^{\ddagger}$`, etc.) will need rewording or dropping.
+  - Results prose immediately after Table 2 (`main2.tex` line ~271) restates the old
+    grouping in words and needs the same simplification; also still has pre-reversal
+    baseline numbers (`.206`/`.195`/`.093`/`.034`/`.057`/`.016` at lines ~322, ~362) --
+    these are stale versus the confirmed post-reversal values already locked into
+    `run_all.R`'s `expected_baseline` (Section 35): `.201`/`.187`/`.093`/`.044`/`.063`/
+    `0`. Same section (`\subsection{Intervention implications}` onward) also still
+    reports old pair/triple bootstrap percentages (`38.3%`/`37.8%`/`23.9%`) which
+    should be re-checked against the current `intervention_bootstrap_pair_rank1_freq.csv`
+    (`45.5%`/`38.8%`/`15.7%`, confirmed this session) before pasting in.
+  - Supplementary Section S9 itself: `main2.tex` line 1168
+    (`\subsection*{S9. Belief/concern $\times$ political orientation interaction}`)
+    through line 1264 (next `\subsection*{S10...}` at line 1265) -- delete this whole
+    span, then renumber S10-S14 down by one (or repoint labels/refs if numbering is
+    manual rather than automatic; not yet checked which).
+  - Also line 351 (main-text sentence reporting the interaction's point estimate and
+    pointing to `\nameref{sec:interactionappendix}`) and any other inline
+    cross-references to S9/`sec:interactionappendix`/`supp:interaction` -- not yet
+    fully enumerated beyond this one hit; a fresh grep for `interactionappendix\|
+    supp:interaction\|S9\b` right before the prose pass will catch stragglers,
+    including any in `main9.tex` if that's a separate/parallel file.
+  These are recorded here as a checklist for that pass, not acted on.
+
+**Uncommitted at the time of this entry**: this file plus
+`clean_pipeline/11_interaction_moderation.R`, `clean_pipeline/run_all.R`, and
+`r_patches/07_figure5_scm_hierarchical_v3.R` -- committing together right after this
+entry is written.
