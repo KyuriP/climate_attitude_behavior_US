@@ -2612,3 +2612,47 @@ parity check (no R execution available this session, per standing constraint).
 `context_idx` already live), no other changes needed. Once `29` produces a fresh
 `joint_pag_edgetype_audit.csv`, `17_edge_confounding_classification.R` and then
 `15_confound_sensitivity_diagnostic.R` are next, per Section 40's recommended order.
+
+## Section 42 (2026-09-11): Confounding-sensitivity family (29 -> 17 -> 15) rerun and verified consistent
+
+Kyuri ran all three in sequence after the `alphas`/`ALPHAS` fix (Section 41). Checked
+each output:
+
+- **29** (`joint_pag_edgetype_audit.csv`, `joint_pag_edgetype_crosscheck.csv`): edges
+  now labeled in the current direction (`belief_concern,politics` and
+  `social_norms,policy_support` as `from,to`, not the old reversed order). The
+  crosscheck's `in_current_flip_set` column flags exactly the 4 flip candidates
+  (`social_norms->climate_behavior`, `belief_concern->weather_risk_prep`,
+  `harm_present->weather_risk_prep`, `harm_future->harm_present`) as `TRUE`,
+  everything else `FALSE` -- matches `flip_candidates` in `05` exactly.
+- **17** (`scm_edge_confounding_classification.csv`): 16 rows, all `passes_existence
+  = TRUE`. The 8 `bidirected_dominant` rows (belief_concern-harm_future,
+  belief_concern-weather_risk_prep, harm_present-weather_risk_prep,
+  politics-policy_support, social_norms-climate_behavior, social_norms-
+  policy_support, trust_science-social_norms, weather_risk_prep-climate_behavior)
+  match `15`'s `confound_candidates_in_15` cross-check list exactly -- the
+  script's own internal cross-check should have printed "cross-check OK" rather
+  than the drift warning. Note `social_norms -> policy_support` classifies as
+  `bidirected_dominant` here even though its *direction* was resolved by the
+  separate asymmetry criterion for the SCM (two different statistics, expected to
+  disagree on occasion -- already accounted for in `confound_candidates_in_15`).
+  `belief_concern -> politics` is `mixed_threshold_sensitive` (bidirected at .05,
+  from_to at .01), also as expected, and correctly absent from the 8-edge list.
+- **15** (`confound_sensitivity_status.csv`, `_singlenode_ate.csv`,
+  `_combo_ate.csv`): all 12 specs (baseline, 8 single-edge-to-covariance swaps, the
+  all-8-at-once swap, the harm_future<->harm_present reversal, and the
+  harm_future->trust_science drop) report `status = "ok"` -- no fit failures. The
+  `baseline` spec's single-node ATEs match the locked post-reversal values
+  (`run_all.R`'s `expected_baseline`) to full precision, confirming `15` is
+  correctly building on the current (post-reversal) working SCM rather than a
+  stale copy.
+
+All three regenerated output files committed. This closes out the confounding-
+sensitivity catch-up from Section 40 -- `16` and `18` remain not-required (PAG/LV-IDA
+discovery is independent of the SCM-completion direction choice, per that section's
+reasoning), so this is the full necessary set.
+
+Remaining open items, unchanged from Section 38/39: Figure 3/Table 2 regeneration
+and manuscript prose (last in the update order, `main2.tex` untouched per standing
+instruction), and the pairs/triples decision for the cyclic feedback extension
+(Section 40).

@@ -2,7 +2,7 @@
 "baseline","current 16-edge working SCM, no changes","ok"
 "confound_1of8_belief_concern_harm_future","belief_concern -> harm_future replaced with residual covariance","ok"
 "confound_1of8_politics_policy_support","politics -> policy_support replaced with residual covariance","ok"
-"confound_1of8_policy_support_social_norms","policy_support -> social_norms replaced with residual covariance","ok"
+"confound_1of8_social_norms_policy_support","social_norms -> policy_support replaced with residual covariance","ok"
 "confound_1of8_trust_science_social_norms","trust_science -> social_norms replaced with residual covariance","ok"
 "confound_1of8_harm_present_weather_risk_prep","harm_present -> weather_risk_prep replaced with residual covariance","ok"
 "confound_1of8_belief_concern_weather_risk_prep","belief_concern -> weather_risk_prep replaced with residual covariance","ok"
