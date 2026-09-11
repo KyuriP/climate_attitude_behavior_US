@@ -78,7 +78,7 @@
 #    no TRUE/FALSE classification either -- it's a sort order, not a rule.
 #
 # HOW TO USE: run within the same .qmd session, after Section 7.4 (so
-# agg_ext, node_order_ext, context_idx, alphas are already defined -- same
+# agg_ext, node_order_ext, context_idx, ALPHAS are already defined -- same
 # prerequisites as scripts 21-28, minus n_boot, which this script no longer
 # depends on -- see note 2 above).
 # =============================================================================
@@ -92,7 +92,7 @@ suppressPackageStartupMessages({
 })
 
 stopifnot(exists("agg_ext"), exists("node_order_ext"), exists("context_idx"),
-          exists("alphas"))
+          exists("ALPHAS"))  # fixed 2026-09-11: this previously checked the wrong case entirely -- 00_config.R only ever defines the uppercase spelling, so this stopifnot could never pass on a session that just sourced 00_config.R + 01-03. See analysis_decisions_log.md.
 
 # DECOUPLED from the shared `n_boot` session variable (2026-09-06, after a
 # real mix-up: the primary FCI/PC stability analysis behind Table 2/Figure 3
@@ -218,11 +218,11 @@ n_cores <- max(1L, parallelly::availableCores() - 1L)
 plan(multisession, workers = n_cores)
 
 joint_counts <- list()
-for (alph in names(alphas)) {
+for (alph in names(ALPHAS)) {
   cat("Joint edge-type bootstrap (FCI only), alpha =", alph, "-- ", n_boot_joint, "resamples\n")
   res <- furrr::future_map(
     seq_len(n_boot_joint), run_one_joint,
-    data = agg_ext, nms = node_order_ext, alpha = alphas[[alph]],
+    data = agg_ext, nms = node_order_ext, alpha = ALPHAS[[alph]],
     ctx_idx = context_idx, p = p_ext, pairs_i = pairs_i, pairs_j = pairs_j,
     .options = furrr::furrr_options(seed = TRUE), .progress = TRUE
   )
@@ -279,7 +279,7 @@ build_summary_row <- function(from, to, alph) {
 
 joint_summary <- purrr::pmap_dfr(
   list(from = rep(retained_edges$from, 2), to = rep(retained_edges$to, 2),
-       alph = rep(names(alphas), each = nrow(retained_edges))),
+       alph = rep(names(ALPHAS), each = nrow(retained_edges))),
   build_summary_row
 )
 

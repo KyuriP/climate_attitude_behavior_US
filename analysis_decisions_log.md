@@ -2581,3 +2581,34 @@ colleague's call, not decided here.
 tagged baseline/acyclic/cyclic_equilibrium, ready as-is for that plot); filling the
 real numbers into the draft S15 text from Section 39; the pairs/triples decision
 above; manuscript prose (still last in the update order, Section 38).
+
+## Section 41 (2026-09-11): r_patches/29 had a real case-sensitivity bug (alphas vs ALPHAS), fixed
+
+Kyuri hit `Error: exists("alphas") is not TRUE` running `r_patches/29_joint_pag_edgetype_audit.R`
+(the first of the 29 -> 17 -> 15 rerun sequence recommended in Section 40's follow-up
+chat, to bring the confounding-sensitivity family up to date with the edge reversal).
+
+**Root cause, not a session-setup mistake**: `00_config.R` only ever defines the
+uppercase `ALPHAS <- c("0.05" = 0.05, "0.01" = 0.01)` -- there is no lowercase
+`alphas` object anywhere in the pipeline (confirmed by grepping every script;
+`18_bootstrap_lvida.R` correctly uses `ALPHAS` throughout, `16` doesn't reference it
+at all). `29`'s `stopifnot(..., exists("alphas"))` and three later usages
+(`names(alphas)`, `alphas[[alph]]`, `rep(names(alphas), ...)`) were checking/using
+the wrong case entirely -- this line could never have passed on a session that just
+sourced `00_config.R` + `01_data_prep.R` + `02_ggm.R` + `03_bootstrap_causal_
+discovery.R` in the documented order. Whoever last got `29` to run successfully
+(its output predates this session, dated 2026-09-06) must have had a stray lowercase
+`alphas` object left over in their session from something else -- not a reproducible
+prerequisite, just an accident of that particular session's history.
+
+**Fix**: all 4 occurrences (the `stopifnot` check, the `for (alph in names(alphas))`
+loop, the `alphas[[alph]]` lookup inside it, and the `rep(names(alphas), ...)` in
+`joint_summary`'s construction) changed to `ALPHAS`, matching `00_config.R`'s actual
+variable and `18`'s existing convention. Verified via grep that no lowercase
+`alphas` token remains anywhere in the file, and via a paren/brace/bracket/quote
+parity check (no R execution available this session, per standing constraint).
+
+**Kyuri can just rerun `29` now** -- same session (`agg_ext`/`node_order_ext`/
+`context_idx` already live), no other changes needed. Once `29` produces a fresh
+`joint_pag_edgetype_audit.csv`, `17_edge_confounding_classification.R` and then
+`15_confound_sensitivity_diagnostic.R` are next, per Section 40's recommended order.
