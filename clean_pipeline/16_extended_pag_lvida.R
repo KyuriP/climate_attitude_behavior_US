@@ -268,7 +268,7 @@ if (!file.exists(LVIDA_PATH)) {
 
   cat("\n--- lv-ida possible-effect summary on climate_behavior, rescaled to the +0.5sd ate scale ---\n")
   cat("(dY = 0.5 * tau, tau from lv.ida() run on the correlation matrix -- comparable in\n",
-      "principle to scm_edges_finalized.csv / the deterministic ate tables' .206/.195/etc,\n",
+      "principle to scm_edges_finalized.csv / the deterministic ate tables' current\n    belief_concern/harm_present baselines (.201/.187 post-2026-09-11 reversal; see\n    analysis_decisions_log.md Section 34/35/38),\n",
       "but that equivalence hasn't been checked empirically yet. n_mags_total splits into\n",
       "n_zero (x not a possible ancestor of y in that mag -- a real identified zero),\n",
       "n_identified_nonzero, and n_unidentified (x could be an ancestor but lv.ida can't\n",

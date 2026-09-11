@@ -2378,3 +2378,125 @@ whole file is gone, but are harmless -- the file's entire content was replaced a
 `clean_pipeline/11_interaction_moderation.R`, `clean_pipeline/run_all.R`, and
 `r_patches/07_figure5_scm_hierarchical_v3.R` -- committing together right after this
 entry is written.
+
+## Section 39 (2026-09-11): Cyclic feedback extension built (new script 19), Kyuri's detailed plan locked
+
+**Superseded**: Section 37's tentative "explicitly NOT pursued for this paper" note on the
+feedback/equilibrium treatment is superseded -- Kyuri wants this built out now as
+Supplementary Section S15, per a detailed 8-step plan from her colleague (relayed and
+endorsed 2026-09-11). This section records that plan and what was built against it.
+
+**The plan, in brief** (full text in chat, not reproduced verbatim here):
+1. Primary directional-sensitivity analysis stays exactly as-is: 16 combinations, 12
+   acyclic treated as recursive SCMs, those 12 remain the primary analysis.
+2. The 4 cyclic combinations are fit as simultaneous/non-recursive models,
+   x = Bx + eps, in `lavaan` directly (same estimator/data as the recursive models) --
+   checking convergence, identification (finite SEs), fit indices, det(I-B) or
+   condition number, and spectral radius rho(B). Do NOT force identification if
+   `lavaan` says a model isn't identified -- that itself is informative.
+3. For do(X_j=0.5), remove X_j's own equation, fix X_j=.5, solve the reduced
+   simultaneous system for everything else: x_{-j} = (I - B_{-j,-j})^{-1} B_{-j,j}(0.5).
+   Same Delta-Y scale as the recursive analysis, different interpretation (equilibrium
+   under feedback, not a one-way downstream effect).
+4. Start with single-node interventions only (not pairs/triples) -- just ask whether
+   the ranking changes under feedback; that alone tells us if this is worth extending.
+5. Report a feedback-amplification quantity per node: Delta Y_cyclic / Delta
+   Y_nearest-acyclic-specification (or the plain difference).
+6. A supplementary figure, not folded into Figure 4: Delta Y on the x-axis, nodes as
+   rows, diamonds = baseline, light points = the 11 other acyclic specs, a different
+   symbol for the 4 cyclic equilibrium specs, annotated with whether rho(B)<1 for each.
+7. Its own Supplement subsection after the directional-sensitivity one:
+   `\subsection{Feedback extension for cyclic orientation specifications}`,
+   `\label{supp:feedback}`, opening paragraph already drafted by the colleague (see
+   chat) naming the shared loop weather risk -> belief/concern -> present harm ->
+   weather risk.
+8. Fallback if `lavaan` says a cyclic model isn't identified: do NOT hack it into
+   convergence. Instead run a feedback-strength sensitivity analysis -- treat the one
+   contested coefficient (weather_risk_prep -> belief_concern, the edge whose flip
+   closes the loop) as a swept parameter across a plausible range, solve the
+   equilibrium wherever it's stable, and show Delta Y as a function of assumed
+   feedback strength for belief/concern and present harm.
+
+**What was built**: `clean_pipeline/19_cyclic_feedback_equilibrium.R` (new, not yet run
+-- needs Kyuri's R session; not added to `run_all.R`'s `scripts_in_order`, same
+optional/separate convention as 15/16/17/18). Implements the plan directly:
+
+- Identifies the 4 cyclic combos programmatically (via the same `is_acyclic()` check
+  07 uses) and, for each, its "nearest acyclic" analog -- same flip set with edge #1
+  (`belief_concern -> weather_risk_prep`, the loop-closing flip) un-flipped, everything
+  else identical. This is what the amplification ratio in step 5 is computed against.
+- PRIMARY (step 2-3): `build_lavaan_syntax()` (already generic -- it just emits
+  `to ~ from1 + from2 + ...` per node with no acyclicity assumption) handed a cyclic
+  edge list produces exactly the reciprocal-path non-recursive SEM syntax needed, no
+  new syntax builder required. Fits it via `lavaan::sem(..., estimator="MLR")`, then
+  checks convergence, finite/plausible standardized SEs (<5 SD treated as practically
+  unidentified), and no Heywood cases (checked via `parameterEstimates()`'s own
+  `~~`/lhs==rhs variance rows directly, not a specific internal matrix slot, since
+  which slot -- theta vs psi -- holds observed-variable residual variances depends on
+  lavaan's internal representation and isn't worth guessing at). If identified: builds
+  the full 9x9 B matrix from the standardized solution, computes det(I-B),
+  cond(I-B) (`kappa(..., exact=TRUE)`), and rho(B) (max modulus eigenvalue of the
+  *whole* B matrix, general per the plan -- this is NOT the same number as the
+  by-hand "loop gain" product a*b*c computed earlier this session: for a 3-cycle,
+  rho(B) = |loop_gain|^(1/3), a different number with the identical stability
+  boundary at 1, since |x|<1 iff |x|^(1/3)<1). If rho(B)<1: solves the general
+  reduced-system equilibrium in closed form for every one of the 8 non-outcome node
+  targets (handles combo_5/13 losing `social_norms` as a `climate_behavior` parent
+  automatically, since B is built from that combo's actual edge list -- no
+  special-casing per combo needed).
+- FALLBACK (step 8), triggered per-combo if the joint fit isn't usable OR is
+  identified-but-unstable (rho(B)>=1): fits every node's regression equation
+  separately via `lm()` on that combo's actual parent set (correct and well-identified
+  for every non-loop edge and for the loop's two non-contested edges; explicitly an
+  approximation for a jointly-endogenous loop, flagged as such in the output and in
+  the header comment -- no instrument available, same caveat this session's earlier
+  informal version of this calculation already carried). Sweeps the one contested
+  coefficient (`weather_risk_prep -> belief_concern`) from -0.6 to 0.6 by 0.02, plus
+  the raw empirical correlation as a flagged point estimate, solving the equilibrium
+  and rho(B) at every swept value -- this is the "feedback-strength -> Delta Y" grid
+  step 8 and the proposed figure's fallback data would need.
+- Outputs: `cyclic_feedback_diagnostics.csv` (one row per cyclic combo: converged,
+  se_finite, no_heywood, identified, det(I-B), cond(I-B), rho(B), stable, method used),
+  `cyclic_feedback_ate_equilibrium.csv` (combo x node: equilibrium Delta Y, nearest-
+  acyclic Delta Y, amplification ratio and difference), `cyclic_feedback_strength_
+  sweep.csv` (only written if any combo needed the fallback -- the full sweep grid),
+  and `orientation_enumeration_ate_all16_with_equilibrium.csv` (07's 12 acyclic rows +
+  this script's 4 equilibrium rows, tagged `combo_type` in {baseline, acyclic,
+  cyclic_equilibrium} -- direct input for the proposed Supp. figure in step 6).
+- Verified by static checks only (no R execution available this session, per standing
+  constraint): parenthesis/brace/bracket/quote parity confirmed balanced; read through
+  the full edge-parent-set logic by hand against `base_edges`/`flip_candidates` to
+  confirm `fit_one_equation()` picks up the right parent set for every node under both
+  cyclic-loop configurations (config A/B, i.e., whether `harm_future -> harm_present`
+  is also flipped) and under both `social_norms -> climate_behavior` states (whether
+  `climate_behavior` keeps 3 parents or 2), matching the by-hand derivation confirmed
+  against Kyuri's real R output earlier in the session. NOT yet run -- needs a live R
+  session with `df_extended` loaded (source 01-04 first, or run inside the same
+  session as `run_all.R`, same requirement 06-14 already have).
+
+**Not yet done, deferred to after this script runs**:
+- The step 4 "does the single-node ranking change under feedback" comparison itself --
+  can't be answered until the script actually runs and produces real numbers.
+- Step 5's amplification figures for real (the script computes the ratio/difference,
+  but whether it's "radical" enough to justify pairs/triples per step 4's stated
+  decision rule needs the real output).
+- The Supp. figure (step 6) and the LaTeX subsection (step 7) -- drafted skeleton
+  below for later use, not inserted into `main2.tex` (manuscript prose remains last
+  in the update order, per Section 38, and the standing instruction on that file).
+- Whether this deserves a main-text sentence at all -- explicitly a downstream
+  decision per step 4/8, not assumed.
+
+**Draft-only Supplement opening** (for the manuscript-prose pass, not applied now):
+
+    \subsection{Feedback extension for cyclic orientation specifications}
+    \label{supp:feedback}
+
+    Four of the 16 combinations of the directionally uncertain relationships produced
+    a directed feedback loop and therefore could not be analyzed using the recursive
+    intervention procedure used in the primary sensitivity analysis. Rather than
+    discarding these specifications, we examined them separately as linear
+    equilibrium feedback models. All four contained the same core loop, weather risk
+    $\rightarrow$ belief/concern $\rightarrow$ present harm $\rightarrow$ weather risk.
+
+(Continues with the equilibrium formulation, identification/stability checks, and
+results once `19_cyclic_feedback_equilibrium.R` has real output to report.)
