@@ -1,0 +1,103 @@
+clean_pipeline reference run
+run started:  2026-09-11 15:41:09 CEST
+run finished: 2026-09-11 16:12:20 CEST
+elapsed:      31.16866 mins
+
+finalized 16-edge SCM file used this run:
+  path: pipeline_outputs/scm_edges_finalized.csv
+  mtime: 2026-09-11 15:42:06
+  md5: f702e44c7e7b06175b554da00c390c42
+
+baseline check (8 single-node ATEs vs 2026-09-08 locked values):
+              node   expected actual actual_full_precision match
+    belief_concern 0.20127244 0.2013            0.20127244  TRUE
+      harm_present 0.18696534 0.1870            0.18696534  TRUE
+       harm_future 0.12929528 0.1293            0.12929528  TRUE
+ weather_risk_prep 0.09307600 0.0931            0.09307600  TRUE
+          politics 0.00000000 0.0000            0.00000000  TRUE
+      social_norms 0.06336526 0.0634            0.06336526  TRUE
+     trust_science 0.04369978 0.0437            0.04369978  TRUE
+    policy_support 0.00000000 0.0000            0.00000000  TRUE
+
+ALL 8 MATCH: TRUE
+
+files frozen (pipeline_outputs/):
+ - attrition_demographics_categorical.csv
+ - attrition_demographics_numeric.csv
+ - attrition_waves1to4_comparison.csv
+ - behavior_sensitivity_ate.csv
+ - behavior_sensitivity_fci_adjacency.csv
+ - behavior_sensitivity_ggm.csv
+ - behavior_sensitivity_scm_equation.csv
+ - bootstrap_manifest.csv
+ - fci_props_ext_nboot1000_20260911.rds
+ - fci_props_main_nboot1000_20260911.rds
+ - intervention_bootstrap_ate_matrix.rds
+ - intervention_bootstrap_ci.csv
+ - intervention_bootstrap_pair_rank1_freq.csv
+ - intervention_bootstrap_triple_rank1_freq.csv
+ - ipw_balance_check.csv
+ - ipw_behavior_equation_compare.csv
+ - ipw_overlap_summary.csv
+ - ipw_single_node_ate_compare.csv
+ - ipw_weight_distribution.csv
+ - LATEST_bootstrap_run.csv
+ - mark_props_ext_by_alpha_nboot1000_20260911.rds
+ - pc_props_ext_nboot1000_20260911.rds
+ - pc_props_main_nboot1000_20260911.rds
+ - scm_edges_finalized.csv
+
+files frozen (pipeline_outputs/tables/):
+ - fit_supplement_table.csv
+ - orientation_enumeration_ate_deterministic_8node.csv
+ - orientation_enumeration_ate_deterministic.csv
+ - orientation_enumeration_combo_ate_deterministic.csv
+ - orientation_enumeration_fit.csv
+ - orientation_uncertainty_band_combos_full_deterministic.csv
+ - orientation_uncertainty_band_full_deterministic.csv
+
+sessionInfo():
+R version 4.4.2 (2024-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS 26.5.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Amsterdam
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] purrr_1.0.2         igraph_2.1.2        lavaan_0.6-19       tibble_3.2.1        furrr_0.3.1         future_1.34.0       graph_1.84.1       
+ [8] BiocGenerics_0.52.0 pcalg_2.7-12        bootnet_1.6         ggplot2_3.5.1       qgraph_1.9.8        huge_1.3.5          psych_2.4.12       
+[15] tidyr_1.3.1         dplyr_1.1.4         arrow_23.0.1.1     
+
+loaded via a namespace (and not attached):
+  [1] RColorBrewer_1.1-3   rstudioapi_0.17.1    shape_1.4.6.1        magrittr_2.0.3       jomo_2.7-6           nloptr_2.1.1        
+  [7] rmarkdown_2.29       vctrs_0.6.5          minqa_1.2.8          fastICA_1.2-7        base64enc_0.1-3      htmltools_0.5.8.1   
+ [13] polynom_1.4-1        plotrix_3.8-4        weights_1.1.1        broom_1.0.7          Formula_1.2-5        mitml_0.4-5         
+ [19] parallelly_1.41.0    htmlwidgets_1.6.4    plyr_1.8.9           sfsmisc_1.1-20       lifecycle_1.0.4      iterators_1.0.14    
+ [25] pkgconfig_2.0.3      Matrix_1.7-1         R6_2.5.1             fastmap_1.2.0        rbibutils_2.3        clue_0.3-66         
+ [31] digest_0.6.37        fdrtool_1.2.18       colorspace_2.1-1     Hmisc_5.2-1          ellipse_0.5.0        nnls_1.6            
+ [37] gdata_3.0.1          abind_1.4-8          IsingSampler_0.2.4   compiler_4.4.2       proxy_0.4-27         bit64_4.5.2         
+ [43] withr_3.0.2          doParallel_1.0.17    glasso_1.11          htmlTable_2.4.3      backports_1.5.0      mgm_1.2-15          
+ [49] R.utils_2.13.0       pan_1.9              MASS_7.3-64          corpcor_1.6.10       gtools_3.9.5         tools_4.4.2         
+ [55] pbivnorm_0.6.0       foreign_0.8-87       nnet_7.3-20          R.oo_1.27.1          glue_1.8.0           quadprog_1.5-8      
+ [61] NetworkToolbox_1.4.4 nlme_3.1-166         grid_4.4.2           checkmate_2.3.2      cluster_2.1.8        reshape2_1.4.4      
+ [67] generics_0.1.3       snow_0.4-4           gtable_0.3.6         R.methodsS3_1.8.2    class_7.3-23         data.table_1.16.4   
+ [73] utf8_1.2.4           foreach_1.5.2        pillar_1.10.1        stringr_1.5.1        robustbase_0.99-4-1  splines_4.4.2       
+ [79] smacof_2.1-7         networktools_1.6.0   lattice_0.22-6       survival_3.8-3       bit_4.5.0.1          tidyselect_1.2.1    
+ [85] RBGL_1.82.0          pbapply_1.7-2        knitr_1.49           reformulas_0.4.0     gridExtra_2.3        IsingFit_0.4        
+ [91] stats4_4.4.2         xfun_0.50            DEoptimR_1.1-3-1     stringi_1.8.4        boot_1.3-31          evaluate_1.0.1      
+ [97] codetools_0.2-20     wordcloud_2.6        BiocManager_1.30.25  cli_3.6.3            rpart_4.1.24         Rdpack_2.6.2        
+[103] munsell_0.5.1        Rcpp_1.0.13-1        globals_0.16.3       png_0.1-8            bdsmatrix_1.3-7      parallel_4.4.2      
+[109] ggm_2.5.1            assertthat_0.2.1     jpeg_0.1-10          listenv_0.9.1        lme4_1.1-36          glmnet_4.1-9        
+[115] mvtnorm_1.3-3        scales_1.3.0         e1071_1.7-16         eigenmodel_1.11      rlang_1.1.4          mnormt_2.1.1        
+[121] mice_3.18.0         

@@ -1,0 +1,10 @@
+"variable","smd_unweighted","smd_ipw_weighted","improved"
+"belief_concern",-0.008,-0.005,TRUE
+"harm_present",-0.028,-0.002,TRUE
+"harm_future",-0.005,0.001,TRUE
+"policy_support",-0.017,-0.007,TRUE
+"trust_science",0.003,-0.003,TRUE
+"social_norms",-0.001,-0.003,FALSE
+"politics",0.001,-0.006,FALSE
+"weather_risk_prep",-0.071,-0.017,TRUE
+"age",0.167,0.03,TRUE

@@ -1,0 +1,17 @@
+"scenario","n_flipped","flipped_edges","status","cfi","tli","rmsea","srmr","aic","bic"
+"combo_0",0,"(none -- baseline)","ok",0.978399817182425,0.959073337819331,0.0893644019754634,0.046283872290477,-4784.21751775445,-4660.23669425158
+"combo_1",1,"belief_concern -> weather_risk_prep","cyclic_skipped",NA,NA,NA,NA,NA,NA
+"combo_2",1,"harm_present -> weather_risk_prep","ok",0.974253104386033,0.951216408310378,0.0975659496541039,0.0497684921513659,-4759.00090891193,-4635.02008540906
+"combo_3",2,"belief_concern -> weather_risk_prep; harm_present -> weather_risk_prep","ok",0.974253104227255,0.951216408009536,0.0975659499549426,0.0497684350198597,-4759.0009089135,-4635.02008541064
+"combo_4",1,"social_norms -> climate_behavior","ok",0.980618262784219,0.965112873011594,0.0825076073431513,0.039399079180801,-4798.7981109069,-4679.58578061568
+"combo_5",2,"belief_concern -> weather_risk_prep; social_norms -> climate_behavior","cyclic_skipped",NA,NA,NA,NA,NA,NA
+"combo_6",2,"harm_present -> weather_risk_prep; social_norms -> climate_behavior","ok",0.97647155115876,0.957648792085767,0.0909063646843424,0.043028779668903,-4773.58150206546,-4654.36917177424
+"combo_7",3,"belief_concern -> weather_risk_prep; harm_present -> weather_risk_prep; social_norms -> climate_behavior","ok",0.976471551158685,0.957648792085634,0.0909063646844859,0.0430287796688995,-4773.58150206546,-4654.36917177425
+"combo_8",1,"harm_future -> harm_present","ok",0.978399816206287,0.959073335969808,0.0893644039947042,0.0462839302218867,-4784.21751775364,-4660.23669425078
+"combo_9",2,"belief_concern -> weather_risk_prep; harm_future -> harm_present","cyclic_skipped",NA,NA,NA,NA,NA,NA
+"combo_10",2,"harm_present -> weather_risk_prep; harm_future -> harm_present","ok",0.978399816538797,0.959073336599827,0.0893644033068732,0.0462843129615761,-4784.21751775722,-4660.23669425436
+"combo_11",3,"belief_concern -> weather_risk_prep; harm_present -> weather_risk_prep; harm_future -> harm_present","ok",0.978399816194868,0.959073335948171,0.0893644040183268,0.0462842031640634,-4784.21751775643,-4660.23669425356
+"combo_12",2,"social_norms -> climate_behavior; harm_future -> harm_present","ok",0.980618262783963,0.965112873011134,0.0825076073436952,0.0393990791808025,-4798.7981109069,-4679.58578061568
+"combo_13",3,"belief_concern -> weather_risk_prep; social_norms -> climate_behavior; harm_future -> harm_present","cyclic_skipped",NA,NA,NA,NA,NA,NA
+"combo_14",3,"harm_present -> weather_risk_prep; social_norms -> climate_behavior; harm_future -> harm_present","ok",0.980618262783997,0.965112873011194,0.0825076073436242,0.039399079180801,-4798.7981109069,-4679.58578061569
+"combo_15",4,"belief_concern -> weather_risk_prep; harm_present -> weather_risk_prep; social_norms -> climate_behavior; harm_future -> harm_present","ok",0.98061826278414,0.965112873011451,0.0825076073433198,0.039399079180801,-4798.7981109069,-4679.58578061569
