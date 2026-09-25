@@ -107,20 +107,23 @@ W_main <- network_main$graph
 W_ext  <- network_ext$graph
 COMMON_MAX <- max(abs(c(W_main, W_ext)), na.rm = TRUE)
 
-# Layout: qgraph::averageLayout() computed independently for each network --
-# this is what the original exploratory .qmd used (Section 6.3/6.5:
-# `layout_main <- qgraph::averageLayout(getWmat(network_main))`, `layout_ext
-# <- qgraph::averageLayout(getWmat(network_ext))`), rather than the
-# fixed-grid table below, which would put shared nodes at IDENTICAL
-# positions across both panels. That cross-panel guarantee doesn't hold
-# here: because each network's layout is solved independently (and the
-# extended network has a ninth node, climate_behavior, that the main
-# network doesn't), a shared node's position can shift slightly between
-# panels A and B, same as in the original .qmd. The manuscript caption
-# (fig:ggm) is worded to match -- see main.tex. To restore identical
-# cross-panel positions instead, swap to:
-#   layout_for <- function(W) fixed_layout_matrix(rownames(W))
-layout_for <- function(W) qgraph::averageLayout(W)
+# Layout (revision 2026-09-26, reviewer request): ONE shared layout for both
+# panels, so the eight shared variables sit at identical positions in A and B
+# and climate_behavior simply occupies an extra position in B.
+#   1. Solve qgraph::averageLayout() once, on the 9-node extended network.
+#   2. Normalise those coordinates to [-1, 1] ourselves.
+#   3. Panel A takes the same rows (by node name) for its eight nodes.
+#   4. qgraph(rescale = FALSE) in both panels, so qgraph does NOT re-stretch
+#      the 8-node layout to fill the plot once climate_behavior is absent.
+# Plot dimensions (FIG_DIMS_MM$fig2 / $fig3), vsize, margins and the common
+# edge scale (COMMON_MAX) are identical across panels. Plotting-only change:
+# W_main / W_ext and every edge weight are untouched.
+SHARED_LAYOUT <- local({
+  L <- qgraph::averageLayout(W_ext)
+  rownames(L) <- rownames(W_ext)
+  apply(L, 2, function(v) 2 * (v - min(v)) / (max(v) - min(v)) - 1)
+})
+layout_for <- function(W) SHARED_LAYOUT[rownames(W), , drop = FALSE]
 
 # Per-edge line type as a MATRIX aligned to the input adjacency matrix's own
 # dimnames -- see header comment above.
@@ -133,6 +136,7 @@ plot_network_qgraph <- function(W, title) {
   qgraph::qgraph(
     W,
     layout    = layout_for(W),
+    rescale   = FALSE,
     labels    = node_labels[nodes],
     color     = node_fill_for(nodes),
     theme     = "colorblind",

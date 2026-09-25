@@ -99,7 +99,13 @@ fig4_dots <- ggplot(stab, aes(x = col, y = row)) +
     name = "Orientation asymmetry\n(destination − source arrowhead prob.)"
   ) +
   scale_x_discrete(labels = abbr_ext[node_order_ext], expand = c(0, 0), position = "top", drop = FALSE) +
-  scale_y_discrete(labels = node_labels_oneline[rev(node_order_ext)], expand = c(0, 0), drop = FALSE) +
+  # Row labels carry the column abbreviation, e.g. "Present harm (HP)", so
+  # each column code can be read off its row (revision 2026-09-26).
+  scale_y_discrete(
+    labels = paste0(node_labels_oneline[rev(node_order_ext)],
+                    " (", abbr_ext[rev(node_order_ext)], ")"),
+    expand = c(0, 0), drop = FALSE
+  ) +
   coord_fixed() +
   labs(title = "A   FCI bootstrap stability", x = NULL, y = NULL) +
   theme_pub +

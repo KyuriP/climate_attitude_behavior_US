@@ -93,7 +93,7 @@ abbr <- c(
   trust_science        = "TS",
   social_norms         = "SN",
   politics             = "POL",
-  weather_risk_prep    = "WR"
+  weather_risk_prep    = "WW"
 )
 
 dir.create("figures", showWarnings = FALSE)

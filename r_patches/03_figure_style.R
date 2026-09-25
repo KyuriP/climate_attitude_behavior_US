@@ -119,7 +119,7 @@ node_labels <- c(
   trust_science      = "Trust\nScience",
   policy_support     = "Policy\nSupport",
   politics           = "Politics",
-  weather_risk_prep  = "Weather\nrisk",
+  weather_risk_prep  = "Weather\nworry",
   social_norms       = "Social\nNorms",
   climate_behavior   = "Climate\nBehavior"
 )
@@ -131,7 +131,7 @@ node_labels_oneline <- c(
   trust_science      = "Trust in science",
   policy_support     = "Policy support",
   politics           = "Political orientation",
-  weather_risk_prep  = "Weather risk",
+  weather_risk_prep  = "Weather worry",
   social_norms       = "Social norms",
   climate_behavior   = "Climate behavior"
 )
@@ -147,7 +147,7 @@ node_labels_short <- c(
   trust_science      = "Trust",
   policy_support     = "Policy",
   politics           = "Politics",
-  weather_risk_prep  = "Weather risk",
+  weather_risk_prep  = "Weather worry",
   social_norms       = "Norms",
   climate_behavior   = "Behavior"
 )
