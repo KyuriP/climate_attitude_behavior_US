@@ -18,7 +18,7 @@ Get in touch for access to the raw data if you want to reproduce the pipeline en
 run_all.R                                 (optional -- runs 01-14 fresh and freezes the result, see "reference runs" below)
 01_data_prep.R
 02_ggm.R
-03_bootstrap_causal_discovery.R           (also gives single-run fci_05/fci_01/pc_05/pc_01 for fig 2B/supp fig 8)
+03_bootstrap_causal_discovery.R           (also gives single-run 8-node fci_05/fci_01/pc_05/pc_01; the 9-node single-run PAG in Figure 2B comes from 16)
 04_scm_finalize.R
 05_scm_intervention_helpers.R             (sourced automatically by 06-16, don't run directly)
 06_intervention_ates_singlenode.R
@@ -30,13 +30,17 @@ run_all.R                                 (optional -- runs 01-14 fresh and free
 12_wave5_attrition_check.R
 13_ipw_attrition_sensitivity.R            (needs 12 conceptually, not a code dependency)
 14_behavior_outcome_sensitivity.R         (needs 03's run_one_ext/node_order_ext/context_idx still live in session -- see its header)
-15_confound_sensitivity_diagnostic.R      (optional -- needs 01+02 live, see its header)
-16_extended_pag_lvida.R                   (optional -- needs 03's agg_ext/node_order_ext/context_idx live, and lv-ida downloaded separately, see its header)
-17_edge_confounding_classification.R      (optional -- just reads pipeline_outputs csvs, no live session objects needed)
-18_bootstrap_lvida.R                      (optional -- bootstraps the fci pag -> mag -> lv-ida chain for sampling-variability cis on 16's single-node effects, needs 03's extended objects live and lv-ida downloaded separately, see its header)
-19_cyclic_feedback_equilibrium.R          (optional -- equilibrium treatment of the 4 structurally-cyclic orientation combos 07-10 skip, same convention as 15-18, see its header)
-20_stability_matrix_figures.R             (optional -- regenerates the two supplement stability-matrix figures straight from 03's bootstrap output, doesn't touch 04-19)
+15_confound_sensitivity_diagnostic.R      (not in run_all.R -- needs 01+02 live, see its header. Figure 5 and the connectedness supplement table read its output)
+16_extended_pag_lvida.R                   (not in run_all.R -- needs 03's agg_ext/node_order_ext/context_idx live, and lv-ida downloaded separately, see its header. Figure 2B's PAG comes from its single-run fit)
+17_edge_confounding_classification.R      (not in run_all.R -- just reads pipeline_outputs csvs, no live session objects needed. formalizes the rule behind 15's 8 edges)
+18_bootstrap_lvida.R                      (not in run_all.R -- bootstraps the fci pag -> mag -> lv-ida chain for sampling-variability cis on 16's single-node effects, needs 03's extended objects live and lv-ida downloaded separately, see its header. Figure 4's script and the bootstrap lv-ida supplement figure read its output)
+19_cyclic_feedback_equilibrium.R          (not in run_all.R -- equilibrium treatment of the 4 structurally-cyclic orientation combos 07-10 skip, same convention as 15-18, see its header. the feedback supplement figure reads its output)
+20_stability_matrix_figures.R             (standalone -- regenerates the supplement stability-matrix figure (FCI and PC-stable panels) straight from 03's bootstrap output, doesn't touch 04-19)
 ```
+
+15-20 aren't part of run_all.R, but the current manuscript's figures do use their
+output, so run them too before regenerating figures. The top-level README has a
+table of which script makes each manuscript figure and what it needs first.
 
 Everything's pulled with `sed` from the qmd's / r_patches' actual text, not
 retyped, so the numerical logic matches what already produced the current
@@ -74,8 +78,8 @@ bootstrap outputs, no new modeling.
   right -- checked against fig2's actual vector line objects).
 - `03_bootstrap_causal_discovery.R` -- FCI/PC-stable bootstrap, both
   networks, dated + manifested output so nothing downstream can silently
-  read a stale array again. also computes single-run fci_05/fci_01/pc_05/
-  pc_01 for fig 2 panel B / supp fig 8. 14 needs this script's run_one_ext/
+  read a stale array again. also computes single-run 8-node fci_05/fci_01/
+  pc_05/pc_01 (the 9-node single-run PAG used for Figure 2B is computed in 16). 14 needs this script's run_one_ext/
   node_order_ext/context_idx live in the session, not just saved output.
 - `04_scm_finalize.R` -- adapted from 18_finalize_scm_specification_v4.R.
   reads the bootstrap array through LATEST_bootstrap_run.csv, stops on an
@@ -96,12 +100,14 @@ bootstrap outputs, no new modeling.
   + politics-conditional shift intervention, plus an exact closed-form
   cross-check of the Monte Carlo shift means.
 - `12` (from script 24) -- retained (N=870) vs attrited (N=1,117) SMD
-  comparison, feeds supp S11's opening numbers.
+  comparison, feeds the opening numbers of the Supplement's attrition
+  section (supp:ipw).
 - `13` (from script 28) -- IPW weights, overlap/ESS/truncation, weighted vs
-  unweighted behavior equation + single-node ATEs. feeds the rest of S11.
+  unweighted behavior equation + single-node ATEs. feeds the rest of that
+  section.
 - `14` (from script 23) -- mitig4/evacuate/move alternative outcomes: GGM
-  weights, FCI adjacency, behavior refit, single-node ATEs. feeds S12
-  (mitig4 only -- evacuate/move aren't cited with specific numbers yet).
+  weights, FCI adjacency, behavior refit, single-node ATEs. feeds the
+  Supplement's alternative-outcome section (supp:mitig4; mitig4 only -- evacuate/move aren't cited with specific numbers yet).
 - `15` -- confound/existence sensitivity diagnostic, prompted by the joint
   pag endpoint audit (`r_patches/29_joint_pag_edgetype_audit.R`): the 8 scm
   edges that were bidirected-plurality in the fci bootstrap at BOTH alpha
@@ -110,8 +116,8 @@ bootstrap outputs, no new modeling.
   harm_future->harm_present on its own and dropping
   harm_future->trust_science entirely. reuses 05's base_edges/helpers as-is.
 - `16` -- the single-run extended (9-node) pag doesn't exist anywhere else
-  in the repo -- fci_05/fci_01 in 03 are main-network-only, that's figure
-  S4. computes it at BOTH alpha levels with the same jci/contextVars args
+  in the repo -- fci_05/fci_01 in 03 are main-network-only.
+  computes it at BOTH alpha levels with the same jci/contextVars args
   as 03's extended bootstrap (that's an exogeneity restriction -- wave-5
   behavior can't cause the 8 earlier-wave variables -- not a substantive
   "context variable" claim), prints the actual edge type (->, <-, <->,
@@ -120,7 +126,7 @@ bootstrap outputs, no new modeling.
   directly. if lv-ida is downloaded separately (see its header): reports
   listMags()'s mag-completion count per alpha AND whether it hit the 500
   cap (a capped count is a floor, not the true number), then runs lv.ida()
-  for all 8 non-outcome nodes (matching fig 7's node set), rescaled to the
+  for all 8 non-outcome nodes (the same 8-node set as the working-scm effects), rescaled to the
   same +0.5sd ate scale the rest of the pipeline reports on (not yet
   checked empirically that this rescaling is right). doesn't attempt
   pairs/triples -- single-node effects don't just add once you allow
@@ -145,9 +151,7 @@ bootstrap outputs, no new modeling.
   equilibrium systems (x = Bx + eps) instead of discarding them, and checks
   whether that changes the intervention conclusions relative to the 12
   recursive combos. per Kyuri's plan (analysis_decisions_log.md Section
-  39), proposed as a new supplement subsection referenced by label only
-  (\label{supp:feedback}) since S9's deletion is still shifting later
-  section numbers (Section 43). not in run_all.R's scripts_in_order.
+  39), now the Supplement's feedback subsection (\label{supp:feedback}). not in run_all.R's scripts_in_order.
 - `20_stability_matrix_figures.R` -- the two supplement stability-matrix
   figures, pulled out of the qmd so they don't depend on it. reads
   `node_order_cd`/`fci_props_main`/`pc_props_main`/`fci_marks`/`pc_marks`
@@ -157,7 +161,8 @@ bootstrap outputs, no new modeling.
 
 ## reviewed, not migrated
 
-checked each of these against main9.tex directly (grepped for method
+checked each of these against main9.tex directly at the time of the
+migration (the manuscript files are now main_v2.tex / main_ncc.tex) (grepped for method
 names/numbers, didn't just trust the script's stated purpose):
 
 - not cited anywhere in the manuscript currently: `14_sensitivity_rank_copula_fci.R`,
@@ -183,9 +188,9 @@ names/numbers, didn't just trust the script's stated purpose):
   `08b_supp_figure_all_combo_interventions.R`, `09_supp_causal_graphs_redesign.R`,
   `20_supplementary_measurement_figures.R`.
 - fig 7 -- keeping all 5 variants (`10_figure7_uncertainty_pub.R` plus
-  `_hump`/`_jitter`/`_v2`/`_violin`). the unsuffixed one is what main9.tex's
-  `\includegraphics` actually points to; the rest are alternate visual
-  encodings worth keeping around, not dead code.
+  `_hump`/`_jitter`/`_v2`/`_violin`) as a record. fig 7 is no longer in the
+  manuscript. its working-scm panel became Figure 4
+  (`r_patches/33`, then `r_patches/34_figure_bootstrap_lvida_ridge.R`).
 
 ## fixed along the way
 
@@ -230,9 +235,11 @@ every file that run actually produced (by mtime) into
 `reference_run_manifest.txt` (timestamps, sessionInfo(), the finalized
 16-edge file's path/mtime/md5, the baseline check table), and checks the 8
 single-node baseline ATEs against the values already confirmed twice this
-session (06 and 15 agreeing to 9 decimals): belief_concern=.2022,
-harm_present=.2157, harm_future=.1399, weather_risk_prep=.0921,
-politics=.1080, social_norms=.0481, trust_science=.0115, policy_support=.0077.
+session. these were updated on 2026-09-11 after the two edge reversals
+(analysis_decisions_log.md Sections 34/35) and are now belief_concern=.2013,
+harm_present=.1870, harm_future=.1293, weather_risk_prep=.0931, politics=0,
+social_norms=.0634, trust_science=.0437, policy_support=0 (the values the
+manuscript reports). the earlier .2022/.2157/... set predates the reversals.
 
 If all 8 match: that run is the frozen reference bundle -- don't rerun
 01-14 again without a reason, and treat that `reference_runs/<run_tag>/`
@@ -264,7 +271,9 @@ fresh session too.
   (bootstrapped sampling-variability cis on top of 16) is in
   `pipeline_outputs/bootstrap_lvida_*.csv`. that doesn't mean the question
   is settled, just that there's real output to read now instead of a
-  written-but-unrun script. not touching main9.tex until this is resolved.
+  written-but-unrun script. in the current manuscript the working scm stays
+  the main intervention model, and 15 (covariance replacement) plus 16/18
+  (pag-compatible lv-ida) are reported alongside it as sensitivity analyses.
 - `run_all.R` has been run clean twice now
   (`reference_runs/20260908_212907/` and `reference_runs/20260911_154109/`,
   both with all 8 baseline ATEs matching). the more recent of the two is

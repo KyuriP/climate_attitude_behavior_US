@@ -1,3 +1,0 @@
-Rscript: /usr/local/bin/Rscript  started Sat Sep 26 01:08:56 CEST 2026
-Fatal error: impossible d'ouvrir le fichier 'r_patches/36_revision_figures_1_2A.R' : Operation not permitted
-exit=2  finished Sat Sep 26 01:08:57 CEST 2026

@@ -2,3 +2,5 @@
 /data_henry
 /data
 .Rproj.user
+.Rhistory
+r_patches/*.log

@@ -3,10 +3,10 @@
 # (copied by mtime, not a hand-typed filename list, so nothing can be missed
 # or stale-pulled from an older session), sessionInfo(), the exact
 # scm_edges_finalized.csv this run generated, and a check of the 8 single-
-# node baseline ATEs against the values locked in on 2026-09-08
-# (.2022/.2157/.1399/.0921/.1080/.0481/.0115/.0077 for belief_concern/
-# harm_present/harm_future/weather_risk_prep/politics/social_norms/
-# trust_science/policy_support).
+# node baseline ATEs against the locked values (updated 2026-09-11 after the
+# edge reversals, see expected_baseline below: .2013/.1870/.1293/.0931/0/
+# .0634/.0437/0 for belief_concern/harm_present/harm_future/
+# weather_risk_prep/politics/social_norms/trust_science/policy_support).
 #
 # why this exists: we've now hit three separate stale-artifact bugs from
 # mixing outputs across different pipeline states or sessions (the S9
