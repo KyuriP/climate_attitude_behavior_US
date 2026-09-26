@@ -113,7 +113,7 @@ node_family <- c(
 )
 
 node_labels <- c(
-  belief_concern     = "Belief/\nconcern",
+  belief_concern     = "Belief and\nconcern",
   harm_present       = "Present\nharm",
   harm_future        = "Future\nharm",
   trust_science      = "Trust in\nscience",
@@ -125,7 +125,7 @@ node_labels <- c(
 )
 
 node_labels_oneline <- c(
-  belief_concern     = "Belief/concern",
+  belief_concern     = "Belief and concern",
   harm_present       = "Present harm",
   harm_future        = "Future harm",
   trust_science      = "Trust in science",

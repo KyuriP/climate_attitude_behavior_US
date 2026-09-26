@@ -14,7 +14,9 @@
 #             column "hp_cb_cov"; written by 37_presentharm_behavior_sensitivity_and_S8.R)
 #
 # No new estimation: this only re-displays existing point estimates.
-# Output: figures/fig_pathway_dependence.pdf (180 x 78 mm)
+# Output: figures/fig_pathway_dependence.pdf (180 x 74 mm)
+# Labels (2026-09-26, readability pass): plain-language legend/subtitles; the
+# alternative model still replaces the directed path with a residual covariance.
 # =============================================================================
 
 REPO <- "/Users/Kyuri1/Documents/Kyuri_P/PhD_UvA/Climate_Attitude_Behavior/climate_attitude_behavior_US"
@@ -61,8 +63,8 @@ dB <- panel_data(setNames(hpcb$baseline, hpcb$node)[TARGETS],
 stopifnot(abs(dA$baseline[1] - .201) < .0005, abs(dA$alt[1] - .091) < .0005,
           abs(dB$baseline[2] - .187) < .0005, abs(dB$alt[2] - .055) < .0005)
 
-KIND_BASE <- "Baseline working SCM"
-KIND_ALT  <- "Path treated as non-transmitting"
+KIND_BASE <- "Working model"
+KIND_ALT  <- "Link attributed to a shared cause"
 
 make_panel <- function(d, title, show_y = TRUE) {
   long <- rbind(
@@ -114,7 +116,7 @@ make_panel <- function(d, title, show_y = TRUE) {
     scale_x_continuous(limits = c(-.012, .235), breaks = c(0, .1, .2),
                        expand = expansion(mult = c(0, .01))) +
     labs(x = X_LAB, y = NULL, title = title,
-         subtitle = "replaced by a residual covariance") +
+         subtitle = "link attributed to a shared unmeasured cause") +
     theme_pub +
     theme(
       axis.text.y  = if (show_y) element_text(size = 9, colour = COL$ink) else element_blank(),
@@ -131,7 +133,7 @@ make_panel <- function(d, title, show_y = TRUE) {
     )
 }
 
-pA <- make_panel(dA, "A   Belief/concern → Future harm", show_y = TRUE)
+pA <- make_panel(dA, "A   Belief and concern → Future harm", show_y = TRUE)
 pB <- make_panel(dB, "B   Present harm → Climate behavior", show_y = FALSE)
 
 fig <- (pA | pB) + plot_layout(guides = "collect") &
