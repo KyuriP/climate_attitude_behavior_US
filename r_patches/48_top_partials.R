@@ -1,0 +1,5 @@
+# 48: ten strongest partial correlations in the 8-node GGM (to check Supplementary Table partialcorr)
+ut <- which(upper.tri(W_main), arr.ind = TRUE)
+d <- data.frame(a = rownames(W_main)[ut[,1]], b = colnames(W_main)[ut[,2]], w = W_main[ut])
+d <- d[order(-abs(d$w)), ]; print(head(transform(d, w = round(w, 4)), 12), row.names = FALSE)
+cat("48 DONE\n")

@@ -1,0 +1,17 @@
+                 a                 b      w rank
+      harm_present       harm_future 0.5258    1
+    policy_support     trust_science 0.3859    2
+    belief_concern       harm_future 0.2817    3
+    belief_concern     trust_science 0.2516    4
+     trust_science      social_norms 0.2469    5
+    belief_concern      harm_present 0.2053    6
+    belief_concern weather_risk_prep 0.1626    7
+    policy_support          politics 0.1568    8
+    belief_concern          politics 0.1432    9
+      harm_present weather_risk_prep 0.1421   10
+    belief_concern    policy_support 0.1414   11
+ weather_risk_prep  climate_behavior 0.1337   12
+      harm_present  climate_behavior 0.1221   13
+    policy_support      social_norms 0.1174   14
+n retained ext: 32 of 36 
+49 DONE

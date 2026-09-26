@@ -1,0 +1,10 @@
+zero-order r(WW,CB) npn: 0.389 
+unregularized partial r(WW,CB): 0.132 
+unregularized partial r row CB:
+   belief_concern      harm_present       harm_future    policy_support     trust_science      social_norms          politics 
+            0.090             0.147            -0.045             0.128            -0.081             0.112            -0.045 
+weather_risk_prep  climate_behavior 
+            0.132             1.000 
+EBICglasso W_ext(WW,CB): 0.134 
+zero-order r(WW,CB) raw: 0.39 
+47 DONE

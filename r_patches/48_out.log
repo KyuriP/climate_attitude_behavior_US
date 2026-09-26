@@ -1,0 +1,14 @@
+              a                 b      w
+   harm_present       harm_future 0.5178
+ policy_support     trust_science 0.3506
+ belief_concern      harm_present 0.2907
+  trust_science      social_norms 0.2769
+ belief_concern       harm_future 0.2402
+ belief_concern     trust_science 0.2322
+   harm_present weather_risk_prep 0.1720
+ belief_concern weather_risk_prep 0.1671
+ policy_support      social_norms 0.1642
+ belief_concern    policy_support 0.1591
+ policy_support          politics 0.1354
+    harm_future    policy_support 0.1083
+48 DONE

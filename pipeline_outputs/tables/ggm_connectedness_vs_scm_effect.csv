@@ -1,0 +1,9 @@
+"node","strength_8node","strength_9node","pcor_with_behavior","scm_effect","rank_strength_8","rank_pcor_cb","rank_effect"
+"belief_concern",1.24,1.303,0.066,0.201,1,5,1
+"harm_present",1.139,1.2,0.122,0.187,2,2,2
+"harm_future",0.979,0.995,0,0.129,4,8,3
+"weather_risk_prep",0.553,0.624,0.134,0.093,7,1,4
+"social_norms",0.657,0.689,0.104,0.063,6,3,5
+"trust_science",1.126,1.167,-0.048,0.044,3,6,6
+"policy_support",0.958,1.044,0.102,0,5,4,7.5
+"politics",0.457,0.537,-0.027,0,8,7,7.5
