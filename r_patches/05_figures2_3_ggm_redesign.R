@@ -147,6 +147,7 @@ plot_network_qgraph <- function(W, title) {
     cut       = 0,
     vsize     = 14,
     label.cex = 1,
+    label.scale.equal = TRUE,
     title     = title,
     title.cex = 1.2,
     mar       = c(3, 3, 6, 3)

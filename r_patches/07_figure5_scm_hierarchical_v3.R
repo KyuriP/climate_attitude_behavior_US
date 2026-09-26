@@ -513,8 +513,9 @@ plot_scm_qgraph <- function() {
     asize = 4.4,
     cut = 0,
     
-    vsize = 10,
-    label.cex = .8,
+    vsize = 11,
+    label.cex = .62,
+    label.scale = FALSE,
     
     title = fig_title,
     title.cex = 1.2

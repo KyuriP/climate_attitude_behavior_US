@@ -1,0 +1,5 @@
+refit: mark at trust_science = tail | mark at policy_support = arrowhead 
+refit identical to saved rds: TRUE 
+any circle marks anywhere in refit PAG: FALSE 
+qmd-style (pairwise cor): mark at trust_science = tail 
+39 DONE

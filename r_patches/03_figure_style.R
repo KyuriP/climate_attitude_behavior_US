@@ -113,15 +113,15 @@ node_family <- c(
 )
 
 node_labels <- c(
-  belief_concern     = "Belief/\nConcern",
-  harm_present       = "Present\nHarm",
-  harm_future        = "Future\nHarm",
-  trust_science      = "Trust\nScience",
-  policy_support     = "Policy\nSupport",
-  politics           = "Politics",
+  belief_concern     = "Belief/\nconcern",
+  harm_present       = "Present\nharm",
+  harm_future        = "Future\nharm",
+  trust_science      = "Trust in\nscience",
+  policy_support     = "Policy\nsupport",
+  politics           = "Political\norientation",
   weather_risk_prep  = "Weather\nworry",
-  social_norms       = "Social\nNorms",
-  climate_behavior   = "Climate\nBehavior"
+  social_norms       = "Social\nnorms",
+  climate_behavior   = "Climate\nbehavior"
 )
 
 node_labels_oneline <- c(
@@ -140,17 +140,9 @@ node_labels_oneline <- c(
 # Figure 4's stability-matrix axes). Reconstructed by reading the exact
 # abbreviations off the already-rendered fig1_heatmap_construct.pdf x-axis,
 # so these match the approved rendering rather than a fresh guess.
-node_labels_short <- c(
-  belief_concern     = "Belief",
-  harm_present       = "Present harm",
-  harm_future        = "Future harm",
-  trust_science      = "Trust",
-  policy_support     = "Policy",
-  politics           = "Politics",
-  weather_risk_prep  = "Weather worry",
-  social_norms       = "Norms",
-  climate_behavior   = "Behavior"
-)
+# Short labels now identical to the one-line labels (review 2026-09-26: no
+# informal abbreviations such as "Trust"/"Politics" in reader-facing figures)
+node_labels_short <- node_labels_oneline
 
 node_fill_for <- function(node_names) unname(node_family_colors[node_family[node_names]])
 

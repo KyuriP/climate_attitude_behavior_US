@@ -152,13 +152,13 @@ panelA_all <- panelA_all |>
     node_label = factor(node_labels_oneline[node], levels = node_label_levels),
     kind = factor(
       case_when(
-        is_politics &  is_baseline ~ "Politics (baseline)",
-        is_politics & !is_baseline ~ "Politics (alternative)",
+        is_politics &  is_baseline ~ "Political orientation (baseline)",
+        is_politics & !is_baseline ~ "Political orientation (alternative)",
         is_baseline                ~ "Baseline specification",
         TRUE                       ~ "Alternative orientation"
       ),
       levels = c("Baseline specification", "Alternative orientation",
-                 "Politics (baseline)", "Politics (alternative)")
+                 "Political orientation (baseline)", "Political orientation (alternative)")
     )
   )
 baseline_df    <- filter(panelA_all, is_baseline)
@@ -201,9 +201,12 @@ boot_full <- boot_full |>
     # Fold "could not be identified" into "zero effect", per the header
     # comment above -- this is a real methodological choice, not a neutral
     # cleanup step.
-    effect_for_density = dplyr::if_else(status == "unidentified", 0, effect_ate_scale)
+    effect_for_density = effect_ate_scale
   )
-stopifnot(!anyNA(boot_full$effect_for_density))
+# REVIEW 2026-09-26: unidentified effects are NOT plotted as zero any more.
+# Weights (1/n_mags) are computed on all MAGs below, then unidentified rows are
+# dropped from the plotted data only; their frequency is reported in Table S17.
+boot_full_all <- boot_full
 
 # Weight scheme: every bootstrap resample contributes total weight 1, split
 # evenly across however many MAGs THAT resample has (1 / n_mags_b each). A
@@ -218,6 +221,8 @@ boot_full <- boot_full |>
   dplyr::group_by(alpha_label, node_label, boot_id) |>
   dplyr::mutate(n_mags_b = dplyr::n(), weight = 1 / n_mags_b) |>
   dplyr::ungroup()
+boot_full <- boot_full |> dplyr::filter(status != "unidentified")
+stopifnot(!anyNA(boot_full$effect_for_density))
 
 # =============================================================================
 # x-axis range for the two quantitative panels (A and B) -- shared, so the
@@ -287,7 +292,7 @@ identified_rows <- point_df_all |>
   dplyr::filter(status %in% c("identified_positive", "identified_negative"))
 
 zero_rows_thinned <- point_df_all |>
-  dplyr::filter(status %in% c("zero", "unidentified")) |>
+  dplyr::filter(status == "zero") |>
   dplyr::group_by(alpha_label, node_label) |>
   dplyr::slice_sample(prop = ZERO_SUBSAMPLE_FRAC, weight_by = weight) |>
   dplyr::ungroup()
@@ -330,19 +335,19 @@ panelA <- ggplot() +
   scale_shape_manual(
     name = NULL,
     values = c("Baseline specification" = 23, "Alternative orientation" = 21,
-               "Politics (baseline)" = 23, "Politics (alternative)" = 21),
+               "Political orientation (baseline)" = 23, "Political orientation (alternative)" = 21),
     breaks = c("Baseline specification", "Alternative orientation")
   ) +
   scale_fill_manual(
     name = NULL,
     values = c("Baseline specification" = COL$rust, "Alternative orientation" = COL$blue_dark,
-               "Politics (baseline)" = COL$ink_mid, "Politics (alternative)" = COL$ink_light),
+               "Political orientation (baseline)" = COL$ink_mid, "Political orientation (alternative)" = COL$ink_light),
     breaks = c("Baseline specification", "Alternative orientation")
   ) +
   scale_colour_manual(
     name = NULL,
     values = c("Baseline specification" = COL$ink, "Alternative orientation" = COL$blue_dark,
-               "Politics (baseline)" = COL$ink, "Politics (alternative)" = COL$ink_light),
+               "Political orientation (baseline)" = COL$ink, "Political orientation (alternative)" = COL$ink_light),
     breaks = c("Baseline specification", "Alternative orientation")
   ) +
   guides(
@@ -400,7 +405,7 @@ panelB <- ggplot() +
                       expand = expansion(mult = c(0, .01))) +
   Y_SCALE_B +
   labs(x = X_LAB, y = NULL, title = "PAG-compatible effects (bootstrap)",
-       subtitle = "Point cloud (zero/unidentified MAGs subsampled)") +
+       subtitle = "Identified effects only (zero-effect MAGs subsampled)") +
   theme_pub +
   theme(
     axis.text.y = element_text(size = 9.2),

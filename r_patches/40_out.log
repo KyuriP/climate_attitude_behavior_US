@@ -1,0 +1,38 @@
+05_scm_intervention_helpers.R loaded: 16 edges, 4 flip candidates, 16 orientation scenarios.
+
+==== (2) free parameters in the baseline working SCM ====
+              lhs op            rhs free   est
+ climate_behavior ~~ policy_support   25 0.003
+       df      npar       aic       bic 
+   19.000    26.000 -4784.218 -4660.237 
+              lhs            rhs est.std    se pvalue
+ climate_behavior policy_support    0.13 0.033      0
+n used: 870 
+lavaan version: 0.6.19 
+
+-- hp_cb_cov spec off-diagonal covariances --
+              lhs op            rhs free   est
+ climate_behavior ~~   harm_present   16 0.003
+ climate_behavior ~~ policy_support   25 0.004
+  df npar 
+  19   26 
+
+==== (4c) nine-node PC-stable: retained SCM pairs, dominant marks ====
+pc_props_ext dims: 9x9x3  marks: N,-,> 
+belief_concern     -- politics            mark@politics: N=0.07 -=0.55 >=0.35 | mark@belief_concern: N=0.07 -=0.46 >=0.45
+belief_concern     -- harm_future         mark@harm_future: N=0.00 -=0.63 >=0.34 | mark@belief_concern: N=0.00 -=0.44 >=0.53
+belief_concern     -- harm_present        mark@harm_present: N=0.00 -=0.26 >=0.71 | mark@belief_concern: N=0.00 -=0.79 >=0.18
+harm_future        -- harm_present        mark@harm_present: N=0.00 -=0.47 >=0.51 | mark@harm_future: N=0.00 -=0.61 >=0.37
+belief_concern     -- trust_science       mark@trust_science: N=0.00 -=0.45 >=0.53 | mark@belief_concern: N=0.00 -=0.63 >=0.35
+harm_future        -- trust_science       mark@trust_science: N=0.28 -=0.06 >=0.64 | mark@harm_future: N=0.28 -=0.67 >=0.03
+belief_concern     -- policy_support      mark@policy_support: N=0.03 -=0.19 >=0.75 | mark@belief_concern: N=0.03 -=0.77 >=0.17
+trust_science      -- policy_support      mark@policy_support: N=0.00 -=0.27 >=0.71 | mark@trust_science: N=0.00 -=0.74 >=0.24
+politics           -- policy_support      mark@policy_support: N=0.03 -=0.11 >=0.84 | mark@politics: N=0.03 -=0.84 >=0.10
+social_norms       -- policy_support      mark@policy_support: N=0.17 -=0.32 >=0.48 | mark@social_norms: N=0.17 -=0.48 >=0.32
+trust_science      -- social_norms        mark@social_norms: N=0.00 -=0.08 >=0.90 | mark@trust_science: N=0.00 -=0.91 >=0.06
+harm_present       -- weather_risk_prep   mark@weather_risk_prep: N=0.06 -=0.74 >=0.18 | mark@harm_present: N=0.06 -=0.23 >=0.69
+belief_concern     -- weather_risk_prep   mark@weather_risk_prep: N=0.04 -=0.38 >=0.56 | mark@belief_concern: N=0.04 -=0.59 >=0.34
+harm_present       -- climate_behavior    mark@climate_behavior: N=0.04 -=0.31 >=0.62 | mark@harm_present: N=0.04 -=0.62 >=0.31
+social_norms       -- climate_behavior    mark@climate_behavior: N=0.26 -=0.14 >=0.57 | mark@social_norms: N=0.26 -=0.57 >=0.14
+weather_risk_prep  -- climate_behavior    mark@climate_behavior: N=0.04 -=0.11 >=0.83 | mark@weather_risk_prep: N=0.04 -=0.83 >=0.11
+40 DONE

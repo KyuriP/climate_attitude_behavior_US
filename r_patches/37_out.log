@@ -1,0 +1,62 @@
+05_scm_intervention_helpers.R loaded: 16 edges, 4 flip candidates, 16 orientation scenarios.
+
+==== (A) single-node ATEs, do(X = +0.5) ====
+               node baseline hp_cb_cov all8_plus_hp_cb
+1    belief_concern   0.2013    0.1331               0
+2      harm_present   0.1870    0.0549               0
+3       harm_future   0.1293    0.0567               0
+4 weather_risk_prep   0.0931    0.1298               0
+5      social_norms   0.0634    0.1329               0
+6     trust_science   0.0437    0.0916               0
+7    policy_support   0.0000    0.0000               0
+8          politics   0.0000    0.0000               0
+
+==== baseline-best triple across specs ====
+             spec                                      target size   ate rank
+1        baseline harm_present+weather_risk_prep+social_norms    3 0.304    1
+2       hp_cb_cov harm_present+weather_risk_prep+social_norms    3 0.263    1
+3 all8_plus_hp_cb harm_present+weather_risk_prep+social_norms    3 0.000    1
+
+==== best triple within each spec ====
+             spec                                        target size   ate rank
+1 all8_plus_hp_cb       belief_concern+harm_present+harm_future    3 0.000    1
+2        baseline   harm_present+weather_risk_prep+social_norms    3 0.304    1
+3       hp_cb_cov belief_concern+weather_risk_prep+social_norms    3 0.263    1
+
+==== residual correlation HP~~CB ====
+             spec resid_cor  ci_lo ci_hi        p
+1       hp_cb_cov     0.149 0.0765 0.222 5.81e-05
+2 all8_plus_hp_cb     0.235 0.1591 0.312 1.46e-09
+
+==== fit ====
+             spec chisq.scaled df cfi.robust rmsea.robust   srmr       aic       bic
+1        baseline     135.4153 19     0.9784       0.0894 0.0463 -4784.217 -4660.237
+2       hp_cb_cov     164.5705 19     0.9732       0.0996 0.0667 -4752.445 -4628.464
+3 all8_plus_hp_cb     765.7008 18     0.8642       0.2302 0.2981 -4085.670 -3956.920
+
+==== (B) S8: conditioning vs intervention (model-implied, standardized) ====
+        variable E_cb_given_X_eq_0.5 E_cb_do_X_eq_0.5 difference
+1   harm_present              0.2265           0.1870  3.949e-02
+2 belief_concern              0.2013           0.2013 -5.551e-17
+        quantity  value
+1        b_hp_cb 0.2947
+2        b_hp_wr 0.4257
+3        b_wr_cb 0.1862
+4        b_bc_hp 0.2905
+5        b_hf_hp 0.6358
+6        b_bc_hf 0.8561
+7 impl_cor_hp_cb 0.4529
+8 impl_cor_bc_hp 0.8349
+9  obs_cor_hp_cb 0.4758
+37 DONE
+
+==== (B2) S8 full table for harm_present ====
+           variable conditioning intervention
+1    belief_concern       0.4174       0.0000
+2       harm_future       0.4423       0.0000
+3 weather_risk_prep       0.2600       0.2129
+4  climate_behavior       0.2265       0.1870
+5     trust_science       0.3514       0.0000
+6      social_norms       0.2423       0.0000
+7          politics       0.2212       0.0000
+8    policy_support       0.3347       0.0000

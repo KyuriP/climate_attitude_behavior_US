@@ -93,7 +93,8 @@ abbr <- c(
   trust_science        = "TS",
   social_norms         = "SN",
   politics             = "POL",
-  weather_risk_prep    = "WW"
+  weather_risk_prep    = "WW",
+  climate_behavior     = "CB"
 )
 
 dir.create("figures", showWarnings = FALSE)
@@ -273,6 +274,17 @@ message("Saved figures/figS_stability_matrix_detailed.pdf (FCI per-end-mark deta
 figS_pc <- plot_edge_matrix(pc_props_main, pc_marks, "PC-stable", include_undirected = TRUE)
 save_ms_figure(figS_pc, "figures/figS_stability_pc.pdf", FIG_DIMS_MM$fig_stability)
 message("Saved figures/figS_stability_pc.pdf (PC-stable, restyled v4, appendix)")
+
+# REVIEW 2026-09-26: nine-node versions (including Wave-5 climate behavior),
+# matching the nine-node FCI/PC-stable comparison described in the Methods.
+latest_ptr <- read.csv(LATEST_POINTER_PATH, stringsAsFactors = FALSE)
+fci_props_ext9 <- readRDS(latest_ptr$fci_props_ext_path)
+pc_props_ext9  <- readRDS(latest_ptr$pc_props_ext_path)
+fig_detail9 <- plot_edge_matrix(fci_props_ext9, fci_marks, "FCI", nodes = NODE_ORDER_EXT, include_undirected = FALSE)
+save_ms_figure(fig_detail9, "figures/figS_stability_matrix_detailed_ext.pdf", c(width = 175, height = 175))
+figS_pc9 <- plot_edge_matrix(pc_props_ext9, pc_marks, "PC-stable", nodes = NODE_ORDER_EXT, include_undirected = TRUE)
+save_ms_figure(figS_pc9, "figures/figS_stability_pc_ext.pdf", c(width = 175, height = 175))
+message("Saved nine-node figS_stability_matrix_detailed_ext.pdf / figS_stability_pc_ext.pdf")
 
 cat("\n===== DONE (20_stability_matrix_figures.R) =====\n")
 cat("New/changed files:\n")
