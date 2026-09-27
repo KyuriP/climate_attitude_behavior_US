@@ -44,8 +44,8 @@ node_order <- base$node[order(-base$ate_climate_behavior, match(base$node, NODES
 lab_levels <- rev(node_labels_oneline[node_order])
 ypos <- setNames(seq_along(lab_levels), lab_levels)
 
-KIND <- c(base = "Baseline specification",
-          one  = "One relationship replaced",
+KIND <- c(base = "Working SCM",
+          one  = "One of the eight relationships replaced",
           all8 = "All eight replaced")
 
 d$kind <- ifelse(d$spec == "baseline", KIND[["base"]],
@@ -64,31 +64,30 @@ pol <- function(x) x$node == NOT_A_LEVER
 p <- ggplot() +
   geom_vline(xintercept = 0, linewidth = .45, linetype = "dashed", colour = COL$ink_light) +
   geom_point(data = one[!pol(one), ], aes(x = ate_climate_behavior, y = y),
-             shape = 21, size = 2.1, stroke = 0, fill = COL$blue_dark, alpha = .35) +
+             shape = 21, size = 1.7, stroke = 0, fill = COL$blue_dark, alpha = .25) +
   geom_point(data = one[pol(one), ], aes(x = ate_climate_behavior, y = y),
-             shape = 21, size = 2.1, stroke = 0, fill = COL$ink_light, alpha = .45) +
+             shape = 21, size = 1.7, stroke = 0, fill = COL$ink_light, alpha = .35) +
   geom_point(data = d[d$kind == KIND[["all8"]], ],
              aes(x = ate_climate_behavior, y = y),
-             shape = 22, size = 2.7, stroke = .6, fill = COL$blue_light, colour = COL$blue_dark) +
+             shape = 22, size = 2.7, stroke = .35, fill = COL$blue_light, colour = COL$blue_dark, alpha = .7) +
   geom_point(data = d[d$kind == KIND[["base"]] & !pol(d), ],
              aes(x = ate_climate_behavior, y = y),
-             shape = 23, size = 2.6, stroke = .5, fill = COL$rust, colour = COL$ink, alpha = .9) +
+             shape = 23, size = 2.6, stroke = .3, fill = COL$rust, colour = COL$ink, alpha = .65) +
   geom_point(data = d[d$kind == KIND[["base"]] & pol(d), ],
              aes(x = ate_climate_behavior, y = y),
-             shape = 23, size = 2.6, stroke = .5, fill = COL$ink_mid, colour = COL$ink, alpha = .9) +
+             shape = 23, size = 2.6, stroke = .3, fill = COL$ink_mid, colour = COL$ink, alpha = .65) +
   # legend keys (drawn off-panel, NA coordinates are dropped)
   geom_point(data = data.frame(kind = factor(unname(KIND), levels = unname(KIND)), x = NA_real_, y = NA_real_),
              aes(x = x, y = y, shape = kind, fill = kind, colour = kind), na.rm = TRUE) +
   scale_shape_manual(name = NULL, values = setNames(c(23, 21, 22), unname(KIND)), drop = FALSE) +
   scale_fill_manual(name = NULL, values = setNames(c(COL$rust, COL$blue_dark, COL$blue_light), unname(KIND)), drop = FALSE) +
   scale_colour_manual(name = NULL, values = setNames(c(COL$ink, COL$blue_dark, COL$blue_dark), unname(KIND)), drop = FALSE) +
-  guides(shape = guide_legend(override.aes = list(size = 3, stroke = c(.5, 0, .6), alpha = c(.9, .5, 1)))) +
+  guides(shape = guide_legend(override.aes = list(size = c(3, 2.2, 3), stroke = c(.3, 0, .35), alpha = c(.65, .35, .7)))) +
   scale_y_continuous(breaks = ypos, labels = names(ypos), limits = c(.5, length(ypos) + .5),
                      expand = expansion(0)) +
   scale_x_continuous(limits = c(-.03, .25), breaks = c(0, .1, .2),
                      expand = expansion(mult = c(0, .01))) +
-  labs(x = X_LAB, y = NULL, title = "Shared-cause alternatives",
-       subtitle = "Baseline + 8 single replacements + all 8 replaced") +
+  labs(x = X_LAB, y = NULL) +
   theme_pub +
   theme(
     axis.text.y = element_text(size = 9.2),
@@ -100,7 +99,7 @@ p <- ggplot() +
     legend.text = element_text(size = 7.6),
     plot.title = element_text(size = 10, hjust = 0),
     plot.subtitle = element_text(size = 8.2, colour = COL$ink_mid, hjust = 0),
-    plot.margin = margin(10, 4, 4, 4)
+    plot.margin = margin(6, 6, 4, 4)
   )
 
 dir.create("figures", showWarnings = FALSE)
