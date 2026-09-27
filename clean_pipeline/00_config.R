@@ -20,8 +20,8 @@ NODE_ORDER_EXT <- c(NODE_ORDER_MAIN, "climate_behavior")
 # ---- node abbreviations, used by the figure scripts (r_patches/) for axis labels ----
 ABBR <- c(
   belief_concern    = "BC",
-  harm_present      = "HP",
-  harm_future       = "HF",
+  harm_present      = "PH",
+  harm_future       = "FH",
   policy_support    = "PS",
   trust_science     = "TS",
   social_norms      = "SN",

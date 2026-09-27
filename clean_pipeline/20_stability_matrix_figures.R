@@ -87,8 +87,8 @@ if (!exists("pc_props_main"))  pc_props_main  <- .load_from_latest_rds("pc_props
 # than sourcing the whole qmd for it.
 abbr <- c(
   belief_concern       = "BC",
-  harm_present         = "HP",
-  harm_future          = "HF",
+  harm_present         = "PH",
+  harm_future          = "FH",
   policy_support       = "PS",
   trust_science        = "TS",
   social_norms         = "SN",
