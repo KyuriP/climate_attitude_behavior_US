@@ -72,7 +72,8 @@ repository. Remove or edit that line and run from the repository root.
 | Figure 2, causal-discovery stability and PAG | `figures/fig_causal_combined.pdf` | `r_patches/38_figure_causal_combined.R` | `clean_pipeline/03`, `16` |
 | Figure 3, working structural causal model | `figures/fig5_scm_hierarchical.pdf` | `r_patches/07_figure5_scm_hierarchical_v3.R` | `clean_pipeline/04` |
 | Figure 4, predicted intervention effects | `figures/fig4_workingscm.pdf` | `r_patches/34_figure_bootstrap_lvida_ridge.R` | `clean_pipeline/07`, `09`, `18` |
-| Figure 5, dependence of the two leading effects on specific relationships | `figures/fig_pathway_dependence.pdf` | `r_patches/44_figure_pathway_dependence.R` | `clean_pipeline/15`, `r_patches/37` |
+| Figure 5 (NCC version), sensitivity to relationships compatible with unmeasured common causes | `figures/fig_confound_sensitivity.pdf` | `r_patches/51_figure_confound_sensitivity.R` | `clean_pipeline/15` |
+| Figure 5 (longer version) and Supplementary figure (NCC version), dependence of the two leading effects on specific relationships | `figures/fig_pathway_dependence.pdf` | `r_patches/44_figure_pathway_dependence.R` | `clean_pipeline/15`, `r_patches/37` |
 | Supplementary, construct correlation heatmap | `figures/fig1_heatmap_construct.pdf` | `r_patches/04_figure1_heatmap.R` | `clean_pipeline/01` (`df_main` in session) |
 | Supplementary, item dendrogram and PCA scree plot | `figures/figS_item_dendrogram.pdf`, `figures/figS_pca_scree.pdf` | `r_patches/20_supplementary_measurement_figures.R` | Sections 3.5-3.8 of the `.qmd` run in the same session |
 | Supplementary, FCI and PC-stable stability matrices | `figures/figS_stability_matrix_detailed_ext.pdf`, `figures/figS_stability_pc_ext.pdf` | `clean_pipeline/20_stability_matrix_figures.R` | `clean_pipeline/03` |
