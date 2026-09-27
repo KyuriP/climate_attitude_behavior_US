@@ -20,6 +20,7 @@ status <- c(
   fig4_S7 = run("Figure 4 + S7", "r_patches/34_figure_bootstrap_lvida_ridge.R"),
   fig5_ncc = run("Figure 5, NCC version (shared-cause sensitivity)", "r_patches/51_figure_confound_sensitivity.R"),
   fig5_long = run("Figure 5, longer version (pathway dependence)", "r_patches/44_figure_pathway_dependence.R"),
+  fig45_ncc_option = run("Optional NCC Figure 4 (Figures 4 and 5 combined)", "r_patches/52_figure_sensitivity_combined.R"),
   S1 = run("Figure S1 (heatmap)", "r_patches/04_figure1_heatmap.R"),
   S4 = run("Figure S4 (stability matrices)", "clean_pipeline/20_stability_matrix_figures.R",
            pre = function() { assign("fci_marks", c("N", "o", ">", "-"), envir = globalenv())
