@@ -4,3 +4,7 @@
 .Rproj.user
 .Rhistory
 r_patches/*.log
+
+# Local data inputs (not part of this repository)
+/zenodo_v0.1.0/
+/us_wave5_weights.csv
